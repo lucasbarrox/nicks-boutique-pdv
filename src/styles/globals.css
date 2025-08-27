@@ -9,3 +9,31 @@
     @apply bg-gray-50 text-text-primary antialiased;
   }
 }
+/* NOVO CÓDIGO DE IMPRESSÃO DEFINITIVO */
+
+@media screen {
+  /* Na tela, o recibo fica invisível. */
+  #printable-receipt {
+    display: none;
+  }
+}
+
+@media print {
+  /* Ao imprimir, escondemos todo o corpo da página... */
+  body * {
+    visibility: hidden;
+  }
+
+  /* ...e então tornamos VISÍVEL APENAS a área do recibo e tudo dentro dela. */
+  #printable-receipt, #printable-receipt * {
+    visibility: visible;
+  }
+
+  /* Posicionamos o recibo para ocupar toda a página de impressão. */
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

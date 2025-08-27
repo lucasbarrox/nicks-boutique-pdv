@@ -1,4 +1,4 @@
-import { Product, Sale, Customer, DeliveryFee, Seller } from "@/types";
+import { Product, Sale, Customer, DeliveryFee, Seller, Address } from "@/types";
 
 const DB_KEYS = {
   PRODUCTS: 'nicks_boutique_products',
@@ -27,7 +27,6 @@ function setTable<T>(key: string, data: T[]): void {
   }
 }
 
-// Função auxiliar para ajustar o estoque de um item específico
 const adjustStock = (sku: string, quantity: number) => {
   const products = db.products.getAll();
   const productIndex = products.findIndex(p => p.variants.some(v => v.sku === sku));
@@ -40,12 +39,10 @@ const adjustStock = (sku: string, quantity: number) => {
   db.products.setAll(products);
 };
 
-// Função para gerar o próximo ID de venda sequencial
 const getNewSaleId = (): { id: string, displayId: string } => {
   const currentCounter = parseInt(localStorage.getItem(DB_KEYS.SALE_COUNTER) || '0', 10);
   const newCounter = currentCounter + 1;
   localStorage.setItem(DB_KEYS.SALE_COUNTER, newCounter.toString());
-  
   const displayId = `#${newCounter.toString().padStart(5, '0')}`;
   return { id: newCounter.toString(), displayId };
 };
@@ -88,9 +85,8 @@ export const db = {
       sales.push(newSale);
       setTable(DB_KEYS.SALES, sales);
 
-      // Diminui o estoque dos itens vendidos
       newSale.items.forEach(item => {
-        adjustStock(item.sku, -item.quantity); // Passa quantidade negativa para subtrair
+        adjustStock(item.sku, -item.quantity);
       });
 
       return newSale;
@@ -108,9 +104,8 @@ export const db = {
       const saleToRemove = sales.find(s => s.id === saleId);
 
       if (saleToRemove && saleToRemove.status === 'Concluída') {
-        // Devolve os itens ao estoque se a venda estava concluída
         saleToRemove.items.forEach(item => {
-          adjustStock(item.sku, item.quantity); // Passa quantidade positiva para adicionar
+          adjustStock(item.sku, item.quantity);
         });
       }
 
@@ -122,9 +117,13 @@ export const db = {
     getAll: () => getTable<Customer>(DB_KEYS.CUSTOMERS),
     setAll: (data: Customer[]) => setTable(DB_KEYS.CUSTOMERS, data),
     getById: (id: string) => getTable<Customer>(DB_KEYS.CUSTOMERS).find(c => c.id === id),
-    create: (data: Omit<Customer, 'id'>) => {
+    create: (data: Omit<Customer, 'id' | 'addresses'> & { addresses?: Address[] }) => {
       const customers = getTable<Customer>(DB_KEYS.CUSTOMERS);
-      const newCustomer: Customer = { ...data, id: `cust_${Date.now()}` };
+      const newCustomer: Customer = { 
+        ...data, 
+        id: `cust_${Date.now()}`,
+        addresses: data.addresses || [],
+      };
       customers.push(newCustomer);
       setTable(DB_KEYS.CUSTOMERS, customers);
       return newCustomer;
@@ -141,7 +140,18 @@ export const db = {
       let customers = getTable<Customer>(DB_KEYS.CUSTOMERS);
       customers = customers.filter(c => c.id !== id);
       setTable(DB_KEYS.CUSTOMERS, customers);
-    }
+    },
+    addAddress: (customerId: string, addressData: Omit<Address, 'id'>) => {
+      const customers = getTable<Customer>(DB_KEYS.CUSTOMERS);
+      const customerIndex = customers.findIndex(c => c.id === customerId);
+      if (customerIndex > -1) {
+        const newAddress: Address = { ...addressData, id: `addr_${Date.now()}` };
+        customers[customerIndex].addresses.push(newAddress);
+        setTable(DB_KEYS.CUSTOMERS, customers);
+        return newAddress;
+      }
+      return null;
+    },
   },
   deliveryFees: {
     getAll: () => getTable<DeliveryFee>(DB_KEYS.DELIVERY_FEES),

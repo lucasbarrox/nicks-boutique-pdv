@@ -11,6 +11,7 @@ import { Deliveries } from './pages/Deliveries';
 import { Sellers } from './pages/Sellers';
 import { SellerDetail } from './pages/SellerDetail';
 import { SaleDetail } from './pages/SaleDetail';
+import { Dashboard } from './pages/Dashboard';
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<PDV />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vendas" element={<Sales />} />
           <Route path="/vendas/:saleId" element={<SaleDetail />} />
           <Route path="/estoque" element={<Inventory />} />

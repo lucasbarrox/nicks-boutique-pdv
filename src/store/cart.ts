@@ -1,18 +1,25 @@
 import { create } from 'zustand';
-import { CartItem, Product, ProductVariant, Customer, DeliveryFee, Seller } from '@/types';
+import { CartItem, Product, ProductVariant, Customer, Seller, Address } from '@/types';
 import { toast } from 'sonner';
+
+// O tipo que agrupa as informações de entrega para uma venda específica
+type DeliveryInfo = {
+  fee: number;
+  address: Address;
+  notes?: string;
+}
 
 interface CartState {
   items: CartItem[];
   customer: Customer | null;
-  deliveryFee: DeliveryFee | null;
   seller: Seller | null;
+  deliveryInfo: DeliveryInfo | null;
   addItem: (product: Product, variant: ProductVariant) => void;
   removeItem: (sku: string) => void;
   updateQuantity: (sku: string, newQuantity: number) => void;
   setCustomer: (customer: Customer | null) => void;
-  setDeliveryFee: (fee: DeliveryFee | null) => void;
   setSeller: (seller: Seller | null) => void;
+  setDeliveryInfo: (info: DeliveryInfo | null) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTotal: () => number;
@@ -21,8 +28,8 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   customer: null,
-  deliveryFee: null,
   seller: null,
+  deliveryInfo: null,
   
   addItem: (product, variant) => {
     const { items } = get();
@@ -68,18 +75,19 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   setCustomer: (customer) => set({ customer }),
-  
-  setDeliveryFee: (fee) => set({ deliveryFee: fee }),
-
   setSeller: (seller) => set({ seller }),
+  setDeliveryInfo: (info) => set({ deliveryInfo: info }),
   
   getSubtotal: () => get().items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0),
   
   getTotal: () => {
     const subtotal = get().getSubtotal();
-    const fee = get().deliveryFee?.fee || 0;
+    const fee = get().deliveryInfo?.fee || 0;
     return subtotal + fee;
   },
 
-  clearCart: () => set({ items: [], customer: null, deliveryFee: null, seller: get().seller }),
+  clearCart: () => {
+    const currentSeller = get().seller;
+    set({ items: [], customer: null, deliveryInfo: null, seller: currentSeller });
+  },
 }));

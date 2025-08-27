@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { db } from '@/lib/db';
 import { Seller } from '@/types';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 
 export function Sellers() {
   const [sellers, setSellers] = useState(() => db.sellers.getAll());
+  const navigate = useNavigate();
 
   const handleDelete = (seller: Seller) => {
     if (window.confirm(`Tem certeza que deseja excluir o vendedor "${seller.name}"?`)) {
@@ -32,7 +33,7 @@ export function Sellers() {
           <thead className="border-b bg-gray-50">
             <tr>
               <th className="p-4 font-semibold">Nome</th>
-              <th className="p-4 font-semibold">Comissão</th>
+              <th className="p-4 font-semibold">Telefone</th>
               <th className="p-4 font-semibold text-right">Ações</th>
             </tr>
           </thead>
@@ -40,11 +41,27 @@ export function Sellers() {
             {sellers.map(s => (
               <tr key={s.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">
-                  <Link to={`/vendedores/${s.id}`} className="font-bold hover:text-pink-primary transition-colors">{s.name}</Link>
+                  <span 
+                    onClick={() => navigate(`/vendedores/${s.id}`)}
+                    className="font-bold hover:text-pink-primary transition-colors cursor-pointer"
+                  >
+                    {s.name}
+                  </span>
                 </td>
-                <td className="p-4 text-gray-600">{s.commissionRate || 0}%</td>
-                <td className="p-4 text-right">
-                  <button onClick={() => handleDelete(s)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50">
+                <td className="p-4 text-gray-600">{s.phone || '-'}</td>
+                <td className="p-4 text-right space-x-2">
+                   <button 
+                    onClick={() => navigate(`/vendedores/${s.id}`)} 
+                    className="text-gray-400 hover:text-pink-primary p-2 rounded-full hover:bg-pink-50" 
+                    title="Editar Vendedor"
+                  >
+                    <Edit size={18}/>
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(s)} 
+                    className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" 
+                    title="Excluir Vendedor"
+                  >
                     <Trash2 size={18}/>
                   </button>
                 </td>

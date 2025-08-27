@@ -26,8 +26,16 @@ const seedProducts: Product[] = [
 ];
 
 const seedCustomers: Customer[] = [
-    { id: 'cust_1', name: 'Ana Silva', phone: '11999998888', email: 'ana.silva@example.com' },
-    { id: 'cust_2', name: 'Beatriz Costa', phone: '21988887777', email: 'beatriz.costa@example.com' },
+    { 
+      id: 'cust_1', name: 'Ana Silva', phone: '11999998888', email: 'ana.silva@example.com',
+      addresses: [
+        { id: 'addr_1', street: 'Rua das Flores', number: '123', neighborhood: 'Centro', city: 'Maracanaú', state: 'CE' }
+      ] 
+    },
+    { 
+      id: 'cust_2', name: 'Beatriz Costa', phone: '21988887777', email: 'beatriz.costa@example.com',
+      addresses: []
+    },
 ];
 
 const seedDeliveryFees: DeliveryFee[] = [
@@ -37,27 +45,15 @@ const seedDeliveryFees: DeliveryFee[] = [
 ];
 
 const seedSellers: Seller[] = [
-  { id: 'seller_1', name: 'Ana (Admin)', commissionRate: 5 },
-  { id: 'seller_2', name: 'Beatriz Silva', commissionRate: 5 },
+  { id: 'seller_1', name: 'Ana (Admin)', phone: '85911112222', address: { id: 'addr_seller_1', street: 'Rua Principal, 1', city: 'Fortaleza', neighborhood: 'Centro', state: 'CE'} },
+  { id: 'seller_2', name: 'Beatriz Silva', phone: '85933334444' },
 ];
 
 export function initializeDb() {
-  if (localStorage.getItem('nicks_boutique_products') === null) {
-    db.products.setAll(seedProducts);
-  }
-  if (localStorage.getItem('nicks_boutique_customers') === null) {
-    db.customers.setAll(seedCustomers);
-  }
-  if (localStorage.getItem('nicks_boutique_sales') === null) {
-    db.sales.setAll([]);
-  }
-  if (localStorage.getItem('nicks_boutique_delivery_fees') === null) {
-    db.deliveryFees.setAll(seedDeliveryFees);
-  }
-  if (localStorage.getItem('nicks_boutique_sellers') === null) {
-    db.sellers.setAll(seedSellers);
-  }
-  if (localStorage.getItem('nicks_boutique_sale_counter') === null) {
-    localStorage.setItem('nicks_boutique_sale_counter', '0');
-  }
+  if (localStorage.getItem('nicks_boutique_products') === null) db.products.setAll(seedProducts);
+  if (localStorage.getItem('nicks_boutique_customers') === null) db.customers.setAll(seedCustomers);
+  if (localStorage.getItem('nicks_boutique_sales') === null) db.sales.setAll([]);
+  if (localStorage.getItem('nicks_boutique_delivery_fees') === null) db.deliveryFees.setAll(seedDeliveryFees);
+  if (localStorage.getItem('nicks_boutique_sellers') === null) db.sellers.setAll(seedSellers);
+  if (localStorage.getItem('nicks_boutique_sale_counter') === null) localStorage.setItem('nicks_boutique_sale_counter', '0');
 }

@@ -1,7 +1,6 @@
-import { Sale, Product } from '@/types';
+import { Sale } from '@/types';
 import { db } from '@/lib/db';
 
-// Função auxiliar para encontrar o produto e a variação pelo SKU
 const getVariantDetailsBySku = (sku: string) => {
   const allProducts = db.products.getAll();
   for (const product of allProducts) {

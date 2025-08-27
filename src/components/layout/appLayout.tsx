@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { ShoppingCart, Tag, History, Users, Truck, UserCheck } from 'lucide-react';
+import { ShoppingCart, Tag, History, Users, Truck, UserCheck, LayoutDashboard } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: ShoppingCart, label: 'Caixa (PDV)' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/vendas', icon: History, label: 'Vendas' },
   { href: '/estoque', icon: Tag, label: 'Estoque' },
   { href: '/clientes', icon: Users, label: 'Clientes' },
@@ -38,7 +39,7 @@ export function AppLayout() {
             ))}
         </nav>
       </aside>
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
+      <main className="flex-1 p-8 overflow-y-auto h-screen bg-gray-50">
         <Outlet />
       </main>
     </div>

@@ -9,7 +9,6 @@ interface Props {
 
 export function SaleSuccessModal({ isOpen, onNewSale, onPrint }: Props) {
   return (
-    // Usamos o onClose do Modal para a ação primária (nova venda)
     <Modal isOpen={isOpen} onClose={onNewSale} title="Status da Venda">
       <div className="text-center py-8">
         <CheckCircle 

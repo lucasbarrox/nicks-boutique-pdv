@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { Seller } from '@/types';
+import { Seller, Address } from '@/types';
 import { SellerForm } from '@/components/sellers/SellerForm';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
@@ -10,7 +10,6 @@ export function SellerDetail() {
   const { sellerId } = useParams<{ sellerId: string }>();
   const navigate = useNavigate();
   const [seller, setSeller] = useState<Seller | null>(null);
-
   const isNew = sellerId === 'novo';
 
   useEffect(() => {
@@ -25,12 +24,29 @@ export function SellerDetail() {
     }
   }, [sellerId, isNew, navigate]);
 
-  const handleSave = (data: Omit<Seller, 'id'>) => {
+  const handleSave = (data: Omit<Seller, 'id' | 'address'> & { address?: Omit<Address, 'id'> }) => {
+    const addressData = data.address?.street 
+      ? { ...data.address, id: seller?.address?.id || `addr_seller_${Date.now()}` } 
+      : undefined;
+
+    const sellerPayload = {
+      name: data.name,
+      phone: data.phone,
+      emergencyPhone: data.emergencyPhone,
+      birthDate: data.birthDate,
+      address: addressData as Address | undefined,
+    }
+
     if (isNew) {
-      db.sellers.create(data);
+      db.sellers.create(sellerPayload);
       toast.success("Vendedor criado com sucesso!");
     } else if (sellerId) {
-      db.sellers.update({ ...data, id: sellerId });
+      const existingSeller = db.sellers.getById(sellerId);
+      db.sellers.update({ 
+        ...existingSeller, 
+        ...sellerPayload, 
+        id: sellerId,
+      });
       toast.success("Vendedor atualizado com sucesso!");
     }
     navigate('/vendedores');

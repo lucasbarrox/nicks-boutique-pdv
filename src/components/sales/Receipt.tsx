@@ -4,10 +4,8 @@ import { db } from '@/lib/db';
 
 interface ReceiptProps {
   sale: Sale | null;
-  componentRef: React.RefObject<HTMLDivElement>;
 }
 
-// Função auxiliar (pode ser movida para um arquivo de utils depois)
 const getVariantDetailsBySku = (sku: string) => {
   const allProducts = db.products.getAll();
   for (const product of allProducts) {
@@ -19,12 +17,17 @@ const getVariantDetailsBySku = (sku: string) => {
   return { product: null, variant: null };
 }
 
-export function Receipt({ sale, componentRef }: ReceiptProps) {
-  if (!sale) return null;
+export function Receipt({ sale }: ReceiptProps) {
+  if (!sale) {
+    return null;
+  }
+
+  // AQUI ESTÁ A CORREÇÃO:
+  // Buscamos os dados completos do cliente usando o ID que está na venda.
+  const customer = sale.customerId ? db.customers.getById(sale.customerId) : null;
 
   return (
-    // Este componente é escondido por padrão e só é preparado para impressão
-    <div ref={componentRef} className="p-4 font-mono text-xs text-black bg-white">
+    <div className="p-4 font-mono text-xs text-black bg-white">
       <div className="text-center mb-4">
         <h1 className="text-lg font-bold">Nick's Boutique</h1>
         <p>Comprovante de Venda (Não Fiscal)</p>
@@ -36,28 +39,40 @@ export function Receipt({ sale, componentRef }: ReceiptProps) {
         <p><strong>Data:</strong> {new Date(sale.timestamp).toLocaleString('pt-BR')}</p>
         <p><strong>Vendedor:</strong> {sale.sellerName || 'N/A'}</p>
         <p><strong>Cliente:</strong> {sale.customerName || 'Cliente Avulso'}</p>
+        {/* Agora usamos a variável 'customer' que buscamos acima */}
+        {customer?.phone && <p><strong>Telefone:</strong> {customer.phone}</p>}
       </div>
       
+      {sale.deliveryAddress && (
+        <div className="mb-2">
+          <p>--------------------------------</p>
+          <p className="font-bold">ENTREGA:</p>
+          <p>{sale.deliveryAddress.street}, {sale.deliveryAddress.number || 'S/N'}</p>
+          <p>{sale.deliveryAddress.neighborhood}, {sale.deliveryAddress.city}</p>
+          {sale.deliveryNotes && <p>Obs: {sale.deliveryNotes}</p>}
+        </div>
+      )}
+
       <p>--------------------------------</p>
 
       <div className="my-2">
         <div className="grid grid-cols-12 font-bold">
-          <div className="col-span-6">Item</div>
+          <div className="col-span-5">Item</div>
           <div className="col-span-2 text-center">Qtd</div>
           <div className="col-span-2 text-right">Preço</div>
-          <div className="col-span-2 text-right">Total</div>
+          <div className="col-span-3 text-right">Total</div>
         </div>
         {sale.items.map(item => {
           const { product, variant } = getVariantDetailsBySku(item.sku);
           return (
             <div key={item.sku} className="grid grid-cols-12 mt-1">
-              <div className="col-span-6">
+              <div className="col-span-5">
                 <p>{product?.name}</p>
                 <p className='text-[10px]'>({variant?.size}/{variant?.color})</p>
               </div>
               <div className="col-span-2 text-center">{item.quantity}</div>
               <div className="col-span-2 text-right">{item.price.toFixed(2)}</div>
-              <div className="col-span-2 text-right">{(item.price * item.quantity).toFixed(2)}</div>
+              <div className="col-span-3 text-right">{(item.price * item.quantity).toFixed(2)}</div>
             </div>
           );
         })}

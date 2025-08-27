@@ -24,11 +24,35 @@ export interface CartItem {
   stock: number;
 }
 
+export interface Address {
+  id: string;
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode?: string;
+  notes?: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
   phone: string;
   email?: string;
+  birthDate?: string;
+  notes?: string;
+  addresses: Address[];
+}
+
+export interface Seller {
+  id: string;
+  name: string;
+  phone?: string;
+  emergencyPhone?: string;
+  birthDate?: string;
+  address?: Address;
 }
 
 export interface DeliveryFee {
@@ -38,12 +62,6 @@ export interface DeliveryFee {
   fee: number;
 }
 
-export interface Seller {
-  id: string;
-  name: string;
-  commissionRate?: number;
-}
-
 export interface SaleItem {
   sku: string;
   quantity: number;
@@ -51,8 +69,8 @@ export interface SaleItem {
 }
 
 export interface Sale {
-  id: string; // Agora será um número sequencial, mas mantemos como string para flexibilidade
-  displayId: string; // O ID formatado para exibição, ex: #00001
+  id: string;
+  displayId: string;
   customerId: string | null;
   customerName?: string;
   sellerId: string | null;
@@ -61,8 +79,10 @@ export interface Sale {
   totalAmount: number;
   discount: number;
   deliveryFee: number;
+  deliveryAddress: Address | null;
+  deliveryNotes?: string;
   finalAmount: number;
   paymentMethod: 'Crédito' | 'Débito' | 'Dinheiro' | 'Pix';
   timestamp: string;
-  status: 'Concluída' | 'Cancelada' | 'Em Troca'; // NOVO CAMPO
+  status: 'Concluída' | 'Cancelada' | 'Em Troca';
 }

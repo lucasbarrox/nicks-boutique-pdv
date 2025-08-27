@@ -1,17 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/db';
 import { Sale } from '@/types';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Printer, RefreshCw } from 'lucide-react';
 import { SaleDetailCard } from '@/components/sales/SaleDetailCard';
 import { toast } from 'sonner';
+import { Receipt } from '@/components/sales/Receipt'; // Importamos o recibo
 
 export function SaleDetail() {
   const { saleId } = useParams<{ saleId: string }>();
   const navigate = useNavigate();
-  
-  // Usamos o estado para que a tela possa ser atualizada sem recarregar a página
   const [sale, setSale] = useState<Sale | null>(null);
+  
+  // A ref para o nosso componente de recibo invisível
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (saleId) {
@@ -29,7 +31,6 @@ export function SaleDetail() {
     if (!sale) return;
 
     if (window.confirm(`Deseja cancelar a venda ${sale.displayId}? Os produtos serão retornados ao estoque.`)) {
-      // 1. Devolve os itens ao estoque
       sale.items.forEach(item => {
         const products = db.products.getAll();
         const productIndex = products.findIndex(p => p.variants.some(v => v.sku === item.sku));
@@ -42,15 +43,16 @@ export function SaleDetail() {
         }
       });
       
-      // 2. Atualiza o status da venda
       const updatedSale: Sale = { ...sale, status: 'Cancelada' };
       db.sales.update(updatedSale);
-      
-      // 3. Atualiza o estado local para refletir a mudança na UI
       setSale(updatedSale);
-      
       toast.success("Venda cancelada e estoque estornado!");
     }
+  };
+  
+  // A nossa função de impressão nativa
+  const handlePrint = () => {
+    window.print();
   };
 
   if (!sale) {
@@ -63,7 +65,12 @@ export function SaleDetail() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      {/* O Recibo fica aqui, invisível, pronto para ser impresso */}
+      <div id="printable-receipt" >
+        <Receipt sale={sale} />
+      </div>
+
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/vendas')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ArrowLeft />
@@ -73,15 +80,24 @@ export function SaleDetail() {
               <p className="text-gray-500 font-mono">ID: {sale.displayId}</p>
           </div>
         </div>
-        {sale.status === 'Concluída' && (
+        <div className="flex items-center gap-2">
+          {sale.status === 'Concluída' && (
+            <button 
+              onClick={handleCancelSale}
+              className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition-colors"
+            >
+              <RefreshCw size={16} />
+              Cancelar / Estornar
+            </button>
+          )}
           <button 
-            onClick={handleCancelSale}
-            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition-colors"
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-pink-primary text-white rounded-lg font-semibold hover:bg-pink-primary/90 transition-colors"
           >
-            <RefreshCw size={16} />
-            Cancelar / Estornar Venda
+            <Printer size={16} />
+            Imprimir Comprovante
           </button>
-        )}
+        </div>
       </div>
       <SaleDetailCard sale={sale} />
     </div>
