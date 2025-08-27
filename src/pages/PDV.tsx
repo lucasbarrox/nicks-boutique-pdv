@@ -120,18 +120,22 @@ export function PDV() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden">
             <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm h-full flex flex-col">
-              <div className="mb-4 border-b pb-4">
-                  <h3 className="font-bold text-gray-800">Acesso Rápido (Mais Vendidos)</h3>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {topSelling.map(({ product, variantSku }) => {
-                        const variant = product.variants.find(v => v.sku === variantSku);
-                        return variant ? (<button key={variantSku} onClick={() => addItem(product, variant)} className="px-3 py-1 border rounded-full text-sm hover:bg-pink-light/30 transition-colors">{product.name} ({variant.size}/{variant.color})</button>) : null
-                    })}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 border-b pb-6 mb-6">
+                {topSelling.map(({ product }) => (
+                  <div key={product.id} className="border border-border-neutral rounded-lg p-4 flex flex-col">
+                    <div className="bg-gray-100 rounded h-32 flex items-center justify-center mb-4"><Package className="text-gray-400" size={48} /></div>
+                    <h3 className="font-bold text-lg">{product.name}</h3>
+                    <p className="text-pink-primary font-bold text-xl mb-2">{product.basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    <div className="mt-auto space-y-2">
+                      {product.variants.map(v => <button key={v.sku} onClick={() => addItem(product, v)} disabled={v.stock <= 0} className="w-full text-left text-sm flex justify-between items-center p-2 rounded hover:bg-pink-light/30 disabled:opacity-50 disabled:cursor-not-allowed"><span>{v.size} / {v.color}</span><span className={`font-semibold ${v.stock <= 5 && v.stock > 0 ? 'text-orange-500' : 'text-gray-600'} ${v.stock === 0 ? 'text-red-500' : ''}`}>{v.stock > 0 ? `${v.stock} un.` : 'Esgotado'}</span></button>)}
+                    </div>
                   </div>
+                ))}
               </div>
+
               <div className="flex-1 overflow-y-auto -mr-3 pr-3">
-                {!searchTerm && <div className="h-full flex items-center justify-center text-center text-gray-500"><p>Busque por produtos usando a barra de pesquisa acima.</p></div>}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {!searchTerm && <div className="h-full flex items-center justify-center text-center text-gray-500"><p>Busque por produtos ou clique em um dos mais vendidos acima.</p></div>}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                   {filteredProducts.map(p => <div key={p.id} className="border border-border-neutral rounded-lg p-4 flex flex-col"><div className="bg-gray-100 rounded h-32 flex items-center justify-center mb-4"><Package className="text-gray-400" size={48} /></div><h3 className="font-bold text-lg">{p.name}</h3><p className="text-pink-primary font-bold text-xl mb-2">{p.basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p><div className="mt-auto space-y-2">{p.variants.map(v => <button key={v.sku} onClick={() => addItem(p, v)} disabled={v.stock <= 0} className="w-full text-left text-sm flex justify-between items-center p-2 rounded hover:bg-pink-light/30 disabled:opacity-50 disabled:cursor-not-allowed"><span>{v.size} / {v.color}</span><span className={`font-semibold ${v.stock <= 5 && v.stock > 0 ? 'text-orange-500' : 'text-gray-600'} ${v.stock === 0 ? 'text-red-500' : ''}`}>{v.stock > 0 ? `${v.stock} un.` : 'Esgotado'}</span></button>)}</div></div>)}
                 </div>
               </div>
@@ -139,9 +143,26 @@ export function PDV() {
             
             <div className="bg-white p-6 rounded-xl shadow-sm flex flex-col h-full">
               <h2 className="text-2xl font-bold mb-4 border-b pb-3 flex justify-between items-center">Carrinho <span>({items.length})</span></h2>
-              <div className="flex-1 overflow-y-auto -mr-3 pr-3 space-y-4">
+              <div className="flex-1 overflow-y-auto -mr-3 pr-3 space-y-2">
                 {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-gray-500"><ShoppingCart size={48} className="mb-4" /><p>Nenhum item no carrinho</p></div> : 
-                items.map(item => <div key={item.sku} className="flex items-start gap-4"><div className="bg-gray-100 rounded p-2 mt-1"><Package size={24} className="text-gray-400" /></div><div className="flex-1"><p className="font-bold">{item.productName}</p><p className="text-sm text-gray-600">{item.variantInfo}</p><div className="flex items-center gap-2 mt-1"><button onClick={() => updateQuantity(item.sku, item.quantity - 1)} className="p-1 rounded-full hover:bg-gray-200"><Minus size={14} /></button><span className="font-semibold w-6 text-center">{item.quantity}</span><button onClick={() => updateQuantity(item.sku, item.quantity + 1)} className="p-1 rounded-full hover:bg-gray-200"><Plus size={14} /></button></div></div><div className="text-right"><p className="font-bold">{(item.unitPrice * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p><button onClick={() => removeItem(item.sku)} className="text-red-500 hover:text-red-700 mt-1"><Trash2 size={16} /></button></div></div>)}
+                items.map(item => (
+                  <div key={item.sku} className="flex items-center gap-2 p-2">
+                    <div className="bg-gray-100 rounded p-2"><Package size={20} className="text-gray-400" /></div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm leading-tight">{item.productName}</p>
+                      <p className="text-xs text-gray-500">{item.variantInfo}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <button onClick={() => updateQuantity(item.sku, item.quantity - 1)} className="p-1 rounded-full hover:bg-gray-200"><Minus size={12} /></button>
+                        <span className="font-bold text-sm w-5 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.sku, item.quantity + 1)} className="p-1 rounded-full hover:bg-gray-200"><Plus size={12} /></button>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-base">{(item.unitPrice * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                      <button onClick={() => removeItem(item.sku)} className="text-red-500 hover:text-red-700 mt-1"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
               </div>
               <div className="mt-auto border-t pt-4 space-y-2">
                 <div className="space-y-3">
