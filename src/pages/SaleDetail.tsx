@@ -5,14 +5,12 @@ import { Sale } from '@/types';
 import { ArrowLeft, Printer, RefreshCw } from 'lucide-react';
 import { SaleDetailCard } from '@/components/sales/SaleDetailCard';
 import { toast } from 'sonner';
-import { Receipt } from '@/components/sales/Receipt'; // Importamos o recibo
+import { Receipt } from '@/components/sales/Receipt';
 
 export function SaleDetail() {
   const { saleId } = useParams<{ saleId: string }>();
   const navigate = useNavigate();
   const [sale, setSale] = useState<Sale | null>(null);
-  
-  // A ref para o nosso componente de recibo invisível
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,7 +48,6 @@ export function SaleDetail() {
     }
   };
   
-  // A nossa função de impressão nativa
   const handlePrint = () => {
     window.print();
   };
@@ -65,8 +62,7 @@ export function SaleDetail() {
 
   return (
     <div>
-      {/* O Recibo fica aqui, invisível, pronto para ser impresso */}
-      <div id="printable-receipt" >
+      <div id="printable-receipt">
         <Receipt sale={sale} />
       </div>
 

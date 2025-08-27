@@ -68,6 +68,12 @@ export interface SaleItem {
   price: number;
 }
 
+// NOVA INTERFACE PARA OS PAGAMENTOS
+export interface Payment {
+  method: 'Crédito' | 'Débito' | 'Dinheiro' | 'Pix';
+  amount: number;
+}
+
 export interface Sale {
   id: string;
   displayId: string;
@@ -82,7 +88,12 @@ export interface Sale {
   deliveryAddress: Address | null;
   deliveryNotes?: string;
   finalAmount: number;
-  paymentMethod: 'Crédito' | 'Débito' | 'Dinheiro' | 'Pix';
+  
+  // CAMPOS DE PAGAMENTO ATUALIZADOS
+  payments: Payment[]; // Substitui o paymentMethod antigo
+  amountPaid: number; // O total que o cliente pagou (pode ser maior que o finalAmount)
+  changeDue: number;  // O troco a ser dado
+
   timestamp: string;
   status: 'Concluída' | 'Cancelada' | 'Em Troca';
 }

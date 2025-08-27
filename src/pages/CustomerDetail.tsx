@@ -1,10 +1,10 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { Customer, Address } from '@/types';
+import { Customer } from '@/types';
 import { CustomerForm } from '@/components/customers/CustomerForm';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Home } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
 
 export function CustomerDetail() {
@@ -27,19 +27,11 @@ export function CustomerDetail() {
     }
   }, [customerId, isNew, navigate]);
 
-  const handleSave = (data: Omit<Customer, 'id' | 'addresses'> & { addresses: Omit<Address, 'id'>[] }) => {
+  const handleSave = (data: Omit<Customer, 'id' | 'addresses'>) => {
     const cameFromPDV = location.state?.from === '/';
-    
-    // Adiciona IDs a qualquer endereço novo que não tenha um
-    const addressesWithIds = data.addresses.map(addr => 
-        ('id' in addr && addr.id) 
-        ? addr as Address 
-        : { ...addr, id: `addr_${Date.now()}_${Math.random()}` }
-    );
 
     if (isNew) {
-      const customerData = { ...data, addresses: addressesWithIds };
-      const newCustomer = db.customers.create(customerData);
+      const newCustomer = db.customers.create({ ...data, addresses: [] }); // Cria cliente com array de endereços vazio
       toast.success(`Cliente "${newCustomer.name}" criado!`);
       
       if (cameFromPDV) {
@@ -50,12 +42,12 @@ export function CustomerDetail() {
     } else if (customerId) {
       const existingCustomer = db.customers.getById(customerId);
       if (!existingCustomer) return;
-
+      
+      // Mantém os endereços existentes e atualiza o resto dos dados
       const updatedData: Customer = { 
         ...existingCustomer, 
         ...data, 
         id: customerId,
-        addresses: addressesWithIds,
       };
       db.customers.update(updatedData);
       toast.success("Cliente atualizado!");
@@ -82,11 +74,30 @@ export function CustomerDetail() {
             {!isNew && <p className="text-gray-600">{customer?.name}</p>}
         </div>
       </div>
+
       <CustomerForm 
         customerToEdit={isNew ? undefined : customer} 
         onSave={handleSave} 
         onCancel={() => navigate(location.state?.from || '/clientes')} 
       />
+
+      {/* NOVA SEÇÃO: MOSTRA ENDEREÇOS SALVOS (APENAS NA EDIÇÃO) */}
+      {!isNew && customer && customer.addresses.length > 0 && (
+        <div className="mt-8 border-t pt-6">
+          <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Home size={20} />
+            Endereços Salvos
+          </h3>
+          <div className="space-y-3">
+            {customer.addresses.map(addr => (
+              <div key={addr.id} className="p-3 bg-gray-50 border rounded-lg text-sm">
+                <p className="font-semibold">{addr.street}, {addr.number || 'S/N'}</p>
+                <p className="text-gray-600">{addr.neighborhood}, {addr.city} - {addr.state}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

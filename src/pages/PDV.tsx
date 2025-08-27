@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { db } from '@/lib/db';
-import { Product, Sale, Address, Customer } from '@/types';
+import { Product, Sale, Address, Customer, Payment } from '@/types';
 import { Search, Package, User, Truck, X, Plus, Minus, ShoppingCart, UserCheck, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
@@ -56,10 +56,10 @@ export function PDV() {
     toast.success("Entrega adicionada ao carrinho!");
   };
 
-  const handleFinalizeSale = (paymentMethod: Sale['paymentMethod']) => {
+  const handleFinalizeSale = (details: { payments: Payment[], amountPaid: number, changeDue: number }) => {
     if (!seller) { toast.error("Por favor, selecione um vendedor."); return; }
     
-    const saleData: Omit<Sale, 'id' | 'displayId'> = {
+    const saleData = {
       customerId: customer?.id || null,
       customerName: customer?.name,
       sellerId: seller?.id || null,
@@ -71,9 +71,11 @@ export function PDV() {
       deliveryAddress: deliveryInfo?.address || null,
       deliveryNotes: deliveryInfo?.notes,
       finalAmount: getTotal(),
-      paymentMethod,
+      payments: details.payments,
+      amountPaid: details.amountPaid,
+      changeDue: details.changeDue,
       timestamp: new Date().toISOString(),
-      status: 'Concluída',
+      status: 'Concluída' as const,
     };
     
     const newSale = db.sales.create(saleData);
