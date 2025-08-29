@@ -145,6 +145,9 @@ export const db = {
       const customers = getTable<Customer>(DB_KEYS.CUSTOMERS);
       const customerIndex = customers.findIndex(c => c.id === customerId);
       if (customerIndex > -1) {
+        if (!customers[customerIndex].addresses) {
+          customers[customerIndex].addresses = [];
+        }
         const newAddress: Address = { ...addressData, id: `addr_${Date.now()}` };
         customers[customerIndex].addresses.push(newAddress);
         setTable(DB_KEYS.CUSTOMERS, customers);

@@ -82,7 +82,7 @@ export function CustomerDetail() {
       />
 
       {/* NOVA SEÇÃO: MOSTRA ENDEREÇOS SALVOS (APENAS NA EDIÇÃO) */}
-      {!isNew && customer && customer.addresses.length > 0 && (
+      {!isNew && customer && customer.addresses?.length > 0 && (
         <div className="mt-8 border-t pt-6">
           <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
             <Home size={20} />

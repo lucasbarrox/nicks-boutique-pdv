@@ -1,8 +1,7 @@
 import { create } from 'zustand';
-import { CartItem, Product, ProductVariant, Customer, Seller, Address } from '@/types';
+import { CartItem, Product, ProductVariant, Customer, Seller, Address, Sale } from '@/types';
 import { toast } from 'sonner';
 
-// O tipo que agrupa as informações de entrega para uma venda específica
 type DeliveryInfo = {
   fee: number;
   address: Address;
@@ -14,12 +13,14 @@ interface CartState {
   customer: Customer | null;
   seller: Seller | null;
   deliveryInfo: DeliveryInfo | null;
+  lastSale: Sale | null;
   addItem: (product: Product, variant: ProductVariant) => void;
   removeItem: (sku: string) => void;
   updateQuantity: (sku: string, newQuantity: number) => void;
   setCustomer: (customer: Customer | null) => void;
   setSeller: (seller: Seller | null) => void;
   setDeliveryInfo: (info: DeliveryInfo | null) => void;
+  setLastSale: (sale: Sale | null) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTotal: () => number;
@@ -30,6 +31,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   customer: null,
   seller: null,
   deliveryInfo: null,
+  lastSale: null,
   
   addItem: (product, variant) => {
     const { items } = get();
@@ -77,6 +79,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   setCustomer: (customer) => set({ customer }),
   setSeller: (seller) => set({ seller }),
   setDeliveryInfo: (info) => set({ deliveryInfo: info }),
+  setLastSale: (sale) => set({ lastSale: sale }),
   
   getSubtotal: () => get().items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0),
   
@@ -88,6 +91,6 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   clearCart: () => {
     const currentSeller = get().seller;
-    set({ items: [], customer: null, deliveryInfo: null, seller: currentSeller });
+    set({ items: [], customer: null, deliveryInfo: null, lastSale: null, seller: currentSeller });
   },
 }));
