@@ -48,7 +48,7 @@ export function CustomerForm({ customerToEdit, onSave, onCancel }: Props) {
         </div>
         <div>
           <label className="block font-semibold mb-1">Telefone (WhatsApp)</label>
-          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 border rounded-lg" required />
+          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 border rounded-lg" />
         </div>
         <div>
           <label className="block font-semibold mb-1">Email</label>
