@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sale } from '@/types';
 import { db } from '@/lib/db';
 

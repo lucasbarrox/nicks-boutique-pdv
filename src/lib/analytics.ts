@@ -1,4 +1,4 @@
-import { Sale, Product, Payment } from '@/types';
+import { Sale, Product } from '@/types';
 
 // Tipos para nos ajudar nos cálculos
 type SkuCount = { [sku: string]: number };

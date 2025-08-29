@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { db } from '@/lib/db';
-import { Address, Customer, Payment, Sale } from '@/types';
+import { Address, Payment } from '@/types';
 import { Package, Truck, Minus, ShoppingCart, Trash2, Plus } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';

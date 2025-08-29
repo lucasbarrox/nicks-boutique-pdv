@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { Sale } from '@/types';
 import { ArrowLeft, Printer, RefreshCw } from 'lucide-react';
@@ -11,7 +11,6 @@ export function SaleDetail() {
   const { saleId } = useParams<{ saleId: string }>();
   const navigate = useNavigate();
   const [sale, setSale] = useState<Sale | null>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (saleId) {

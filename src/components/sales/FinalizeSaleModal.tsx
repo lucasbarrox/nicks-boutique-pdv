@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
-import { Payment, Sale } from '@/types';
+import { Payment } from '@/types';
 import { Trash2 } from 'lucide-react';
 
 // A nova "assinatura" da nossa função de finalizar

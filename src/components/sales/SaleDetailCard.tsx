@@ -58,12 +58,33 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-            <h3 className="font-bold text-xl mb-4">Pagamento</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-bold text-xl mb-4">Detalhes do Pagamento</h3>
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              {sale.payments && sale.payments.length > 0 ? (
+                <>
+                  {sale.payments.map((p, index) => (
+                      <div key={index} className="flex justify-between">
+                          <span className="text-gray-600">{p.method}:</span>
+                          <span className="font-semibold">{p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      </div>
+                  ))}
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                      <span className="text-gray-600">Total Pago:</span>
+                      <span className="font-semibold">{sale.amountPaid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                  </div>
+                  {sale.changeDue > 0 && (
+                      <div className="flex justify-between font-bold text-blue-500">
+                          <span>Troco:</span>
+                          <span>{sale.changeDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      </div>
+                  )}
+                </>
+              ) : (
                 <div className="flex justify-between">
                     <span className="font-semibold text-gray-600">Forma de Pagamento:</span>
-                    <span className="font-bold">{sale.paymentMethod}</span>
+                    <span className="font-bold">{(sale as any).paymentMethod}</span>
                 </div>
+              )}
             </div>
         </div>
         <div className="space-y-2">
@@ -77,7 +98,7 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
                 <span>{sale.deliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
             <div className="flex justify-between text-2xl font-bold pt-2 border-t text-pink-primary">
-                <span>Total Pago</span>
+                <span>TOTAL DA VENDA</span>
                 <span>{sale.finalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
         </div>
