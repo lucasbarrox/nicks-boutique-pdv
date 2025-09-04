@@ -25,7 +25,7 @@ export function PDV() {
   const [isCustomerModalOpen, setCustomerModalOpen] = useState(false);
   const [isSellerModalOpen, setSellerModalOpen] = useState(false);
   
-  const topSelling = useMemo(() => getTopSellingProducts(sales, products, 4).map(ts => ts.product), [sales, products]);
+  const topSelling = useMemo(() => getTopSellingProducts(sales, products, undefined, 4).map(ts => ts.product), [sales, products]);
   
   useEffect(() => {
     const sellers = db.sellers.getAll();
@@ -48,20 +48,47 @@ export function PDV() {
         <Receipt sale={lastSale} />
       </div>
 
-      <div className="h-full flex flex-col gap-6">
-        <header className="bg-white p-4 rounded-xl shadow-sm flex flex-col gap-4">
-            <div className="w-full flex justify-start items-center gap-4">
-                <button onClick={() => setSellerModalOpen(true)} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"><UserCheck size={20}/><p className="font-semibold">{seller?.name || 'Selecionar Vendedor'}</p></button>
-                <button onClick={() => setCustomerModalOpen(true)} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"><User size={20}/><p className="font-semibold">{customer?.name || 'Cliente Avulso'}</p>{customer && <X size={16} onClick={(e) => { e.stopPropagation(); setCustomer(null);}}/>}</button>
+      <div className="h-full flex flex-col gap-6 p-2">
+        
+        <header className="bg-white p-4 rounded-xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+    
+              <button onClick={() => setSellerModalOpen(true)}
+                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors flex-1">
+                <UserCheck size={24} className="text-pink-primary flex-shrink-0" />
+              <div className="overflow-hidden text-left">
+                <p className="text-xs text-gray-500 font-semibold uppercase">Vendedor(a)</p>
+                <p className="font-bold text-gray-800 truncate">{seller?.name || 'Selecionar'}</p>
+              </div>
+              </button>
+              <button
+                onClick={() => setCustomerModalOpen(true)}
+                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors flex-1"
+              >
+                <User size={24} className="text-pink-primary flex-shrink-0" />
+                <div className="overflow-hidden text-left flex-1">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Cliente</p>
+                  <p className="font-bold text-gray-800 truncate">
+                    {customer?.name || 'Cliente Avulso'}
+                  </p>
+                </div>
+                {customer && (
+                  <X
+                    size={20}
+                    className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); setCustomer(null);}}
+                  />
+                )}
+              </button>
             </div>
-            <div className="relative w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <Input placeholder="Pesquisar produto por nome ou SKU..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-12" />
+
+            <div className="relative w-full max-w-md">
+              <Input placeholder="Buscar" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-gray-50 border-gray-200"/>
             </div>
         </header>
 
         <div className="flex-1 overflow-y-auto pr-2 -mr-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-start">
             {productsToShow.map(p => (
               <div key={p.id} className="border bg-white rounded-lg p-4 flex flex-col shadow-sm">
                 <div className="bg-gray-100 rounded h-32 flex items-center justify-center mb-4"><Package size={48} className="text-gray-300"/></div>

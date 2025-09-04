@@ -4,62 +4,59 @@ import { Sale } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { useSalesFilterStore } from '@/store/salesFilterStore';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Calendar, User } from 'lucide-react';
 import { toast } from 'sonner';
+
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-2 border rounded-lg bg-white" />;
 
 export function Sales() {
   const navigate = useNavigate();
-  // Pega o estado e as funções do nosso store de filtros
   const { 
     dateRange, 
-    customerId, 
-    productId, 
+    customerName,
     setDateRange, 
-    setCustomerId, 
-    setProductId, 
+    setCustomerName,
     clearFilters 
   } = useSalesFilterStore();
 
-  // O estado local agora controla a lista visível, para podermos atualizar após exclusão
-  const [sales, setSales] = useState(() => db.sales.getAll().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+  const [sales, setSales] = useState<Sale[]>(() => db.sales.getAll().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
 
-  // Busca todos os dados necessários para os filtros apenas uma vez
-  const allCustomers = useMemo(() => db.customers.getAll(), []);
-  const allProducts = useMemo(() => db.products.getAll(), []);
-
-  // O coração da nova funcionalidade: filtra as vendas baseado no estado do store
   const filteredSales = useMemo(() => {
+    const today = new Date();
+    const isDefaultView = !dateRange.from && !dateRange.to && !customerName;
+
     return sales.filter(sale => {
-      // Filtro de Data
       const saleDate = new Date(sale.timestamp);
+      
+      if (isDefaultView) {
+        return saleDate.getDate() === today.getDate() &&
+               saleDate.getMonth() === today.getMonth() &&
+               saleDate.getFullYear() === today.getFullYear();
+      }
+
+      // Lógica de filtro por intervalo de data
       if (dateRange.from) {
-        const fromDate = new Date(dateRange.from);
-        fromDate.setHours(0, 0, 0, 0); // Começo do dia
+        // A CORREÇÃO: Substituir '-' por '/' força a interpretação como fuso horário local
+        const fromDate = new Date(dateRange.from.replace(/-/g, '\/'));
+        fromDate.setHours(0, 0, 0, 0); // Garante que estamos pegando desde o início do dia
         if (saleDate < fromDate) return false;
       }
       if (dateRange.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999); // Fim do dia
+        // A CORREÇÃO: Mesma lógica aqui
+        const toDate = new Date(dateRange.to.replace(/-/g, '\/'));
+        toDate.setHours(23, 59, 59, 999); // Garante que estamos pegando até o final do dia
         if (saleDate > toDate) return false;
       }
 
-      // Filtro de Cliente
-      if (customerId && sale.customerId !== customerId) {
-        return false;
-      }
-
-      // Filtro de Produto
-      if (productId && !sale.items.some(item => {
-        const productOfItem = allProducts.find(p => p.variants.some(v => v.sku === item.sku));
-        return productOfItem?.id === productId;
-      })) {
+      // Lógica de filtro por nome do cliente
+      if (customerName && !sale.customerName?.toLowerCase().includes(customerName.toLowerCase())) {
         return false;
       }
 
       return true;
     });
-  }, [sales, dateRange, customerId, productId, allProducts]);
-
+  }, [sales, dateRange, customerName]);
+  
   const handleDeleteSale = (e: React.MouseEvent, sale: Sale) => {
     e.stopPropagation();
     if (window.confirm(`Tem certeza que deseja excluir a venda ${sale.displayId}? Os produtos retornarão ao estoque.`)) {
@@ -69,25 +66,28 @@ export function Sales() {
     }
   };
 
-
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm">
-      <h2 className="text-2xl font-bold mb-4">Histórico de Vendas</h2>
-      
-      <div className="flex flex-wrap items-center gap-4 p-4 border rounded-lg mb-6 bg-gray-50">
-        <DateRangePicker dateRange={dateRange} setDateRange={(range) => setDateRange(range)} />
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Histórico de Vendas</h2>
+      </div>
+
+      <div className="flex flex-col md:flex-row items-center gap-4 p-4 border rounded-xl mb-6 bg-gray-50">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Calendar size={20} className="text-gray-500 flex-shrink-0"/>
+          <DateRangePicker dateRange={dateRange} setDateRange={(range) => setDateRange(range)} />
+        </div>
         
-        <select value={customerId || ''} onChange={(e) => setCustomerId(e.target.value || null)} className="p-2 border border-gray-300 rounded-lg bg-white">
-          <option value="">Todos os Clientes</option>
-          {allCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div className="relative w-full md:w-auto flex-1">
+          <Input 
+            placeholder="Buscar por cliente..."
+            value={customerName || ''}
+            onChange={(e) => setCustomerName(e.target.value || null)}
+            className="pl-10"
+          />
+        </div>
 
-        <select value={productId || ''} onChange={(e) => setProductId(e.target.value || null)} className="p-2 border border-gray-300 rounded-lg bg-white">
-          <option value="">Todos os Produtos</option>
-          {allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-
-        <button onClick={clearFilters} className="flex items-center gap-2 p-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold">
+        <button onClick={clearFilters} className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold whitespace-nowrap">
           <X size={16} /> Limpar Filtros
         </button>
       </div>
@@ -96,12 +96,12 @@ export function Sales() {
         <table className="w-full text-left">
           <thead className="border-b bg-gray-50">
             <tr>
-              <th className="p-4 font-semibold">Data</th>
-              <th className="p-4 font-semibold">ID</th>
-              <th className="p-4 font-semibold">Cliente</th>
-              <th className="p-4 font-semibold">Status</th>
-              <th className="p-4 font-semibold">Total</th>
-              <th className="p-4 font-semibold text-right">Ações</th>
+                <th className="p-4 font-semibold">Data</th>
+                <th className="p-4 font-semibold">ID</th>
+                <th className="p-4 font-semibold">Cliente</th>
+                <th className="p-4 font-semibold">Status</th>
+                <th className="p-4 font-semibold">Total</th>
+                <th className="p-4 font-semibold text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -114,12 +114,17 @@ export function Sales() {
                 <td className="p-4">{new Date(sale.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
                 <td className="p-4 font-mono font-semibold text-gray-700">{sale.displayId}</td>
                 <td className="p-4">{sale.customerName || 'Cliente Avulso'}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${sale.status === 'Concluída' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                 <td className="p-4">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                    ${sale.status === 'Concluída' ? 'bg-green-100 text-green-700' : ''}
+                    ${sale.status === 'Cancelada' ? 'bg-red-100 text-red-700' : ''}
+                  `}>
                     {sale.status}
                   </span>
                 </td>
-                <td className="p-4 font-semibold text-pink-primary">{sale.finalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td className="p-4 font-semibold text-pink-primary">
+                  {sale.finalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </td>
                 <td className="p-4 text-right">
                   <button onClick={(e) => handleDeleteSale(e, sale)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" title="Excluir Venda">
                     <Trash2 size={18}/>

@@ -1,21 +1,38 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { db } from '@/lib/db';
 import { Customer } from '@/types';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, Search } from 'lucide-react';
+
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-3 border rounded-lg" />;
 
 export function Customers() {
   const [customers, setCustomers] = useState(() => db.customers.getAll());
   const navigate = useNavigate();
   
+  // NOVO: Estado para controlar o termo da busca
+  const [searchTerm, setSearchTerm] = useState('');
+
   const handleDelete = (customer: Customer) => {
     if (window.confirm(`Tem certeza que deseja excluir o cliente "${customer.name}"?`)) {
       db.customers.remove(customer.id);
       setCustomers(db.customers.getAll());
       toast.success("Cliente excluído com sucesso!");
     }
-  }
+  };
+
+  // NOVO: Lógica de filtro que busca no nome e no telefone
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return customers;
+    }
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return customers.filter(customer =>
+      customer.name.toLowerCase().includes(lowercasedTerm) ||
+      customer.phone.includes(lowercasedTerm) // Telefone não precisa de toLowerCase
+    );
+  }, [customers, searchTerm]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -28,6 +45,17 @@ export function Customers() {
           Novo Cliente
         </Link>
       </div>
+
+      {/* NOVA BARRA DE PESQUISA */}
+      <div className="relative mb-6">
+        <Input 
+          placeholder="Buscar por nome ou telefone..." 
+          className="pl-12 bg-gray-50"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead className="border-b bg-gray-50">
@@ -39,7 +67,8 @@ export function Customers() {
             </tr>
           </thead>
           <tbody>
-            {customers.map(c => (
+            {/* A lista agora usa os clientes filtrados */}
+            {filteredCustomers.map(c => (
               <tr key={c.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">
                   <span 
@@ -71,9 +100,9 @@ export function Customers() {
             ))}
           </tbody>
         </table>
-        {customers.length === 0 && (
+        {filteredCustomers.length === 0 && (
             <div className="text-center py-16 text-gray-500">
-                <p>Nenhum cliente cadastrado.</p>
+                <p>{searchTerm ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado.'}</p>
             </div>
         )}
       </div>

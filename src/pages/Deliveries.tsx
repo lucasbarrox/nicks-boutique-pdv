@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { db } from '@/lib/db';
 import { DeliveryFee } from '@/types';
 import { toast } from 'sonner';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, Search } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { DeliveryFeeForm } from '@/components/deliveries/DeliveryFeeForm';
+
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-3 border rounded-lg" />;
 
 export function Deliveries() {
   const [fees, setFees] = useState(() => db.deliveryFees.getAll());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFee, setEditingFee] = useState<DeliveryFee | null>(null);
+
+  // NOVO: Estado para controlar o termo da busca
+  const [searchTerm, setSearchTerm] = useState('');
 
   const refreshFees = () => {
     setFees(db.deliveryFees.getAll());
@@ -44,6 +49,18 @@ export function Deliveries() {
       toast.success("Taxa de entrega excluída com sucesso!");
     }
   };
+
+  // NOVO: Lógica de filtro que busca no bairro e na cidade
+  const filteredFees = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return fees;
+    }
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return fees.filter(fee =>
+      fee.neighborhood.toLowerCase().includes(lowercasedTerm) ||
+      fee.city.toLowerCase().includes(lowercasedTerm)
+    );
+  }, [fees, searchTerm]);
   
   return (
     <>
@@ -69,6 +86,17 @@ export function Deliveries() {
             Nova Taxa
           </button>
         </div>
+
+        {/* NOVA BARRA DE PESQUISA */}
+        <div className="relative mb-6">
+          <Input 
+            placeholder="Buscar por bairro ou cidade..." 
+            className="pl-12 bg-gray-50"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="border-b bg-gray-50">
@@ -80,7 +108,8 @@ export function Deliveries() {
               </tr>
             </thead>
             <tbody>
-              {fees.map(f => (
+              {/* A lista agora usa as taxas filtradas */}
+              {filteredFees.map(f => (
                 <tr key={f.id} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-bold">{f.neighborhood}</td>
                   <td className="p-4 text-gray-600">{f.city}</td>
@@ -99,9 +128,9 @@ export function Deliveries() {
               ))}
             </tbody>
           </table>
-          {fees.length === 0 && (
+          {filteredFees.length === 0 && (
               <div className="text-center py-16 text-gray-500">
-                  <p>Nenhuma taxa de entrega cadastrada.</p>
+                  <p>{searchTerm ? 'Nenhuma taxa encontrada.' : 'Nenhuma taxa de entrega cadastrada.'}</p>
               </div>
           )}
         </div>

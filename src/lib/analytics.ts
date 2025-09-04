@@ -1,115 +1,46 @@
-import { Sale, Product } from '@/types';
+import { Sale, Product, Payment } from '@/types';
 
-// Tipos para nos ajudar nos cálculos
-type SkuCount = { [sku: string]: number };
-type ProductSales = { [productId: string]: number };
-type PaymentMethodBreakdown = { [method: string]: number };
-type SalesByHour = { hour: string; sales: number; total: number }[];
+// --- TIPOS E INTERFACES PARA OS DADOS DO DASHBOARD ---
 
-// O tipo de retorno da nossa função
-export type TopProduct = {
-  product: Product;
-  totalSold: number;
-};
-
-// --- FUNÇÕES AUXILIARES DE DATA ---
-
-const isToday = (someDate: Date) => {
-  const today = new Date();
-  return someDate.getDate() === today.getDate() &&
-    someDate.getMonth() === today.getMonth() &&
-    someDate.getFullYear() === today.getFullYear();
-};
-
-const isThisWeek = (someDate: Date) => {
-  const today = new Date();
-  const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
-  firstDayOfWeek.setHours(0, 0, 0, 0);
-  const lastDayOfWeek = new Date(firstDayOfWeek);
-  lastDayOfWeek.setDate(lastDayOfWeek.getDate() + 6);
-  lastDayOfWeek.setHours(23, 59, 59, 999);
-  
-  return someDate >= firstDayOfWeek && someDate <= lastDayOfWeek;
-};
+export type DateRange = { from: Date; to: Date };
+export type TopProduct = { product: Product; totalSold: number };
+export type PaymentMethodBreakdown = { [method: string]: number };
+export type SalesByDay = { date: string; total: number }[];
+// Adicionamos o tipo SalesByHour que estava faltando na última versão
+export type SalesByHour = { hour: string; sales: number; total: number }[];
 
 
-// --- FUNÇÕES DE ANÁLISE ---
+// --- FUNÇÃO AUXILIAR UNIVERSAL DE FILTRO ---
 
-/**
- * Calcula os produtos mais vendidos, agregando as vendas de todas as suas variações.
- */
-export const getTopSellingProducts = (
-  sales: Sale[],
-  products: Product[],
-  limit: number = 10
-): TopProduct[] => {
-  const skuCounts: SkuCount = {};
+const filterSalesByDate = (sales: Sale[], range?: DateRange): Sale[] => {
+  const completedSales = sales.filter(s => s.status === 'Concluída');
+  if (!range) return completedSales;
 
-  // 1. Itera sobre todas as vendas para contar a quantidade de cada SKU vendido
-  sales.forEach(sale => {
-    if (sale.status === 'Concluída') {
-      sale.items.forEach(item => {
-        skuCounts[item.sku] = (skuCounts[item.sku] || 0) + item.quantity;
-      });
-    }
+  return completedSales.filter(sale => {
+    const saleDate = new Date(sale.timestamp);
+    return saleDate >= range.from && saleDate <= range.to;
   });
-
-  // 2. Agrega as contagens de SKU por produto principal (ID do produto)
-  const productSales: ProductSales = {};
-  for (const product of products) {
-    product.variants.forEach(variant => {
-      if (skuCounts[variant.sku]) {
-        productSales[product.id] = (productSales[product.id] || 0) + skuCounts[variant.sku];
-      }
-    });
-  }
-
-  // 3. Converte o objeto de vendas de produtos em um array e ordena
-  const sortedProductIds = Object.keys(productSales)
-    .sort((a, b) => productSales[b] - productSales[a]);
-
-  // 4. Mapeia os IDs ordenados de volta para os objetos de produto completos e formata a saída
-  const topProducts: TopProduct[] = sortedProductIds
-    .map(productId => {
-      const product = products.find(p => p.id === productId);
-      if (!product) return null;
-      return {
-        product: product,
-        totalSold: productSales[productId],
-      };
-    })
-    .filter((p): p is TopProduct => p !== null)
-    .slice(0, limit);
-
-  return topProducts;
 };
 
-/**
- * Calcula as métricas principais de vendas: total do dia, da semana e ticket médio.
- */
-export const calculateSalesMetrics = (sales: Sale[]) => {
-  const completedSales = sales.filter(s => s.status === 'Concluída');
-  const todaySales = completedSales.filter(s => isToday(new Date(s.timestamp)));
-  const weekSales = completedSales.filter(s => isThisWeek(new Date(s.timestamp)));
 
-  const totalDay = todaySales.reduce((sum, sale) => sum + sale.finalAmount, 0);
-  const totalWeek = weekSales.reduce((sum, sale) => sum + sale.finalAmount, 0);
-  const averageTicket = completedSales.length > 0 
-    ? completedSales.reduce((sum, sale) => sum + sale.finalAmount, 0) / completedSales.length
-    : 0;
+// --- FUNÇÕES DE ANÁLISE (AGORA COM SUPORTE A DATAS) ---
 
-  return { totalDay, totalWeek, averageTicket };
+export const calculateSalesMetrics = (sales: Sale[], range?: DateRange) => {
+  const filteredSales = filterSalesByDate(sales, range);
+  
+  const totalSalesValue = filteredSales.reduce((sum, sale) => sum + sale.finalAmount, 0);
+  const salesCount = filteredSales.length;
+  const averageTicket = salesCount > 0 ? totalSalesValue / salesCount : 0;
+
+  return { totalSalesValue, salesCount, averageTicket };
 };
 
-/**
- * Calcula o lucro total baseado no preço de custo dos produtos vendidos.
- */
-export const calculateTotalProfit = (sales: Sale[], products: Product[]): number => {
+export const calculateTotalProfit = (sales: Sale[], products: Product[], range?: DateRange): number => {
+  const filteredSales = filterSalesByDate(sales, range);
   let totalCost = 0;
-  const completedSales = sales.filter(s => s.status === 'Concluída');
-  const totalRevenue = completedSales.reduce((sum, sale) => sum + sale.totalAmount, 0); // Usa totalAmount antes de taxas
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
 
-  completedSales.forEach(sale => {
+  filteredSales.forEach(sale => {
     sale.items.forEach(item => {
       const product = products.find(p => p.variants.some(v => v.sku === item.sku));
       if (product) {
@@ -121,37 +52,86 @@ export const calculateTotalProfit = (sales: Sale[], products: Product[]): number
   return totalRevenue - totalCost;
 };
 
-/**
- * Agrupa o total de vendas por forma de pagamento.
- */
-export const getSalesByPaymentMethod = (sales: Sale[]): PaymentMethodBreakdown => {
+export const getSalesByPaymentMethod = (sales: Sale[], range?: DateRange): PaymentMethodBreakdown => {
+  const filteredSales = filterSalesByDate(sales, range);
   const breakdown: PaymentMethodBreakdown = {};
-  const completedSales = sales.filter(s => s.status === 'Concluída');
 
-  completedSales.forEach(sale => {
-    // Garante que sale.payments exista e seja um array
+  filteredSales.forEach(sale => {
     if (Array.isArray(sale.payments)) {
       sale.payments.forEach(payment => {
         breakdown[payment.method] = (breakdown[payment.method] || 0) + payment.amount;
       });
     }
   });
-
   return breakdown;
 };
 
-/**
- * Agrupa a quantidade e o valor das vendas por hora do dia.
- */
-export const getSalesByHour = (sales: Sale[]): SalesByHour => {
+export const getTopSellingProducts = (sales: Sale[], products: Product[], range?: DateRange, limit: number = 5): TopProduct[] => {
+  const filteredSales = filterSalesByDate(sales, range);
+  const productSales: { [productId: string]: number } = {};
+  
+  for (const product of products) {
+    product.variants.forEach(variant => {
+      const quantitySold = filteredSales
+        .flatMap(sale => sale.items)
+        .filter(item => item.sku === variant.sku)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      
+      if (quantitySold > 0) {
+        productSales[product.id] = (productSales[product.id] || 0) + quantitySold;
+      }
+    });
+  }
+
+  const sortedProductIds = Object.keys(productSales).sort((a, b) => productSales[b] - productSales[a]);
+
+  return sortedProductIds
+    .map(productId => {
+      const product = products.find(p => p.id === productId);
+      return product ? { product, totalSold: productSales[productId] } : null;
+    })
+    .filter((p): p is TopProduct => p !== null)
+    .slice(0, limit);
+};
+
+export const getSalesByDay = (sales: Sale[], range: DateRange): SalesByDay => {
+  const filteredSales = filterSalesByDate(sales, range);
+  const dailySales: { [date: string]: number } = {};
+
+  let currentDate = new Date(range.from);
+  while (currentDate <= range.to) {
+    const dateKey = currentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    dailySales[dateKey] = 0;
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  filteredSales.forEach(sale => {
+    const dateKey = new Date(sale.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    if (dailySales[dateKey] !== undefined) {
+      dailySales[dateKey] += sale.finalAmount;
+    }
+  });
+
+  return Object.entries(dailySales)
+    .map(([date, total]) => ({ date, total }))
+    .sort((a, b) => {
+      const [dayA, monthA] = a.date.split('/').map(Number);
+      const [dayB, monthB] = b.date.split('/').map(Number);
+      if (monthA !== monthB) return monthA - monthB;
+      return dayA - dayB;
+    });
+};
+
+// A FUNÇÃO QUE ESTAVA FALTANDO
+export const getSalesByHour = (sales: Sale[], range?: DateRange): SalesByHour => {
+  const filteredSales = filterSalesByDate(sales, range);
   const hours = Array.from({ length: 24 }, (_, i) => ({
     hour: `${i.toString().padStart(2, '0')}:00`,
     sales: 0,
     total: 0,
   }));
 
-  const completedSales = sales.filter(s => s.status === 'Concluída');
-  completedSales.forEach(sale => {
+  filteredSales.forEach(sale => {
     const hour = new Date(sale.timestamp).getHours();
     if(hours[hour]) {
       hours[hour].sales += 1;

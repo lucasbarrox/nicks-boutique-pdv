@@ -24,16 +24,14 @@ export interface CartItem {
   stock: number;
 }
 
+// AQUI ESTÁ A MUDANÇA PRINCIPAL
 export interface Address {
   id: string;
   street: string;
-  number?: string;
+  number: string;
   complement?: string;
   neighborhood: string;
-  city: string;
-  state: string;
-  zipCode?: string;
-  notes?: string;
+  // Os campos city, state e zipCode foram removidos
 }
 
 export interface Customer {
@@ -58,7 +56,7 @@ export interface Seller {
 export interface DeliveryFee {
   id: string;
   neighborhood: string;
-  city: string;
+  city: string; // Manteremos city aqui para o cadastro da taxa
   fee: number;
 }
 
@@ -68,7 +66,6 @@ export interface SaleItem {
   price: number;
 }
 
-// NOVA INTERFACE PARA OS PAGAMENTOS
 export interface Payment {
   method: 'Crédito' | 'Débito' | 'Dinheiro' | 'Pix';
   amount: number;
@@ -86,14 +83,11 @@ export interface Sale {
   discount: number;
   deliveryFee: number;
   deliveryAddress: Address | null;
-  deliveryNotes?: string;
+  deliveryNotes?: string; // Garantindo que este campo exista
   finalAmount: number;
-  
-  // CAMPOS DE PAGAMENTO ATUALIZADOS
-  payments: Payment[]; // Substitui o paymentMethod antigo
-  amountPaid: number; // O total que o cliente pagou (pode ser maior que o finalAmount)
-  changeDue: number;  // O troco a ser dado
-
+  payments: Payment[];
+  amountPaid: number;
+  changeDue: number;
   timestamp: string;
   status: 'Concluída' | 'Cancelada' | 'Em Troca';
 }

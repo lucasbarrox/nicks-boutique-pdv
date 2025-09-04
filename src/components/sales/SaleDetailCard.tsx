@@ -1,6 +1,14 @@
+// Importa o 'contrato' (tipo) que define a estrutura de uma Venda e nosso "banco de dados".
 import { Sale } from '@/types';
 import { db } from '@/lib/db';
 
+/**
+ * Função auxiliar para buscar os detalhes completos de um produto e sua variação a partir do SKU.
+ * Em um banco de dados real, isso seria um JOIN. Aqui, simulamos essa busca para obter
+ * informações como o nome do produto, que não estão salvas diretamente no item da venda.
+ * @param {string} sku - O SKU da variação do produto.
+ * @returns Um objeto contendo o produto e a variação encontrados, ou nulo.
+ */
 const getVariantDetailsBySku = (sku: string) => {
   const allProducts = db.products.getAll();
   for (const product of allProducts) {
@@ -12,9 +20,18 @@ const getVariantDetailsBySku = (sku: string) => {
   return { product: null, variant: null };
 }
 
+/**
+ * Componente SaleDetailCard
+ * Um componente de "apresentação" que recebe os dados de uma venda e os exibe
+ * de forma organizada e detalhada.
+ * @param { sale: Sale } - Propriedades do componente, esperando um objeto 'sale'.
+ */
 export function SaleDetailCard({ sale }: { sale: Sale }) {
   return (
+    // O container principal do card, com fundo branco, padding, cantos arredondados e sombra.
     <div className="bg-white p-8 rounded-xl shadow-sm space-y-8 max-w-4xl mx-auto">
+      
+      {/* --- Seção de Informações Gerais (Cliente, Vendedor, Data) --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-6 border-b">
         <div>
           <h3 className="text-gray-500 font-semibold">Cliente</h3>
@@ -30,16 +47,20 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
         </div>
       </div>
       
+      {/* --- Seção da Tabela de Itens Vendidos --- */}
       <div>
         <h3 className="font-bold text-xl mb-4">Itens Vendidos</h3>
         <div className="border border-border-neutral rounded-lg">
+          {/* Cabeçalho da tabela, visível apenas em telas maiores (md:grid) */}
           <div className="hidden md:grid grid-cols-5 p-4 bg-gray-50 font-semibold">
             <div className="col-span-2">Produto</div>
             <div>Preço Unit.</div>
             <div>Qtd.</div>
             <div className="text-right">Total</div>
           </div>
+          {/* Itera sobre cada item da venda para criar uma linha. */}
           {sale.items.map((item, index) => {
+            // Para cada item, busca os detalhes completos do produto.
             const { product, variant } = getVariantDetailsBySku(item.sku);
             return (
               <div key={index} className="grid grid-cols-5 p-4 border-b last:border-b-0 items-center">
@@ -56,10 +77,13 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
         </div>
       </div>
 
+      {/* --- Seção Inferior com Detalhes Financeiros --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Coluna da Esquerda: Detalhes do Pagamento */}
         <div>
             <h3 className="font-bold text-xl mb-4">Detalhes do Pagamento</h3>
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              {/* Lógica de compatibilidade: verifica se é uma venda nova (com múltiplos pagamentos) ou antiga */}
               {sale.payments && sale.payments.length > 0 ? (
                 <>
                   {sale.payments.map((p, index) => (
@@ -80,6 +104,7 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
                   )}
                 </>
               ) : (
+                // Se for uma venda antiga, mostra o método de pagamento único
                 <div className="flex justify-between">
                     <span className="font-semibold text-gray-600">Forma de Pagamento:</span>
                     <span className="font-bold">{(sale as any).paymentMethod}</span>
@@ -87,6 +112,8 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
               )}
             </div>
         </div>
+
+        {/* Coluna da Direita: Resumo Financeiro da Venda */}
         <div className="space-y-2">
             <h3 className="font-bold text-xl mb-4">Resumo Financeiro</h3>
             <div className="flex justify-between text-lg">

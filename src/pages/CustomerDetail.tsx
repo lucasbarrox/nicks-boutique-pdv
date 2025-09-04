@@ -92,7 +92,7 @@ export function CustomerDetail() {
             {customer.addresses.map(addr => (
               <div key={addr.id} className="p-3 bg-gray-50 border rounded-lg text-sm">
                 <p className="font-semibold">{addr.street}, {addr.number || 'S/N'}</p>
-                <p className="text-gray-600">{addr.neighborhood}, {addr.city} - {addr.state}</p>
+                <p className="text-gray-600">{addr.neighborhood}</p>
               </div>
             ))}
           </div>

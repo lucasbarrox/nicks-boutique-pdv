@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { db } from '@/lib/db';
 import { Seller } from '@/types';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, Search } from 'lucide-react';
+
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-3 border rounded-lg" />;
 
 export function Sellers() {
   const [sellers, setSellers] = useState(() => db.sellers.getAll());
   const navigate = useNavigate();
+  
+  // NOVO: Estado para controlar o termo da busca
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleDelete = (seller: Seller) => {
     if (window.confirm(`Tem certeza que deseja excluir o vendedor "${seller.name}"?`)) {
@@ -15,7 +20,19 @@ export function Sellers() {
       setSellers(db.sellers.getAll());
       toast.success("Vendedor excluído com sucesso.");
     }
-  }
+  };
+
+  // NOVO: Lógica de filtro que busca no nome e no telefone
+  const filteredSellers = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return sellers;
+    }
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return sellers.filter(seller =>
+      seller.name.toLowerCase().includes(lowercasedTerm) ||
+      (seller.phone && seller.phone.includes(lowercasedTerm)) // Busca no telefone se ele existir
+    );
+  }, [sellers, searchTerm]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -28,6 +45,17 @@ export function Sellers() {
           Novo Vendedor
         </Link>
       </div>
+
+      {/* NOVA BARRA DE PESQUISA */}
+      <div className="relative mb-6">
+        <Input 
+          placeholder="Buscar por nome ou telefone..." 
+          className="pl-12 bg-gray-50"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead className="border-b bg-gray-50">
@@ -38,7 +66,8 @@ export function Sellers() {
             </tr>
           </thead>
           <tbody>
-            {sellers.map(s => (
+            {/* A lista agora usa os vendedores filtrados */}
+            {filteredSellers.map(s => (
               <tr key={s.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">
                   <span 
@@ -69,9 +98,9 @@ export function Sellers() {
             ))}
           </tbody>
         </table>
-        {sellers.length === 0 && (
+        {filteredSellers.length === 0 && (
             <div className="text-center py-16 text-gray-500">
-                <p>Nenhum vendedor cadastrado.</p>
+                <p>{searchTerm ? 'Nenhum vendedor encontrado.' : 'Nenhum vendedor cadastrado.'}</p>
             </div>
         )}
       </div>
