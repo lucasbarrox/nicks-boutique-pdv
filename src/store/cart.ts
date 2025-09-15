@@ -14,6 +14,8 @@ interface CartState {
   seller: Seller | null;
   deliveryInfo: DeliveryInfo | null;
   lastSale: Sale | null;
+  discount: number;
+  discountType: 'R$' | '%';
   addItem: (product: Product, variant: ProductVariant) => void;
   removeItem: (sku: string) => void;
   updateQuantity: (sku: string, newQuantity: number) => void;
@@ -21,6 +23,7 @@ interface CartState {
   setSeller: (seller: Seller | null) => void;
   setDeliveryInfo: (info: DeliveryInfo | null) => void;
   setLastSale: (sale: Sale | null) => void;
+  setDiscount: (value: number, type: 'R$' | '%') => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTotal: () => number;
@@ -32,6 +35,8 @@ export const useCartStore = create<CartState>((set, get) => ({
   seller: null,
   deliveryInfo: null,
   lastSale: null,
+  discount: 0,
+  discountType: 'R$',
   
   addItem: (product, variant) => {
     const { items } = get();
@@ -80,17 +85,31 @@ export const useCartStore = create<CartState>((set, get) => ({
   setSeller: (seller) => set({ seller }),
   setDeliveryInfo: (info) => set({ deliveryInfo: info }),
   setLastSale: (sale) => set({ lastSale: sale }),
+
+  setDiscount: (value, type) => set({ discount: value, discountType: type }),
   
   getSubtotal: () => get().items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0),
   
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const fee = get().deliveryInfo?.fee || 0;
-    return subtotal + fee;
+
+    const { discount, discountType } = get();
+    let discountAmount = 0;
+    if (discountType === '%') {
+      discountAmount = (subtotal * discount) / 100;
+    } else {
+      discountAmount = discount;
+    }
+
+    const total = subtotal + fee - discountAmount;
+    return Math.max(0, total);
+
   },
 
   clearCart: () => {
     const currentSeller = get().seller;
-    set({ items: [], customer: null, deliveryInfo: null, lastSale: null, seller: currentSeller });
-  },
+    set({ items: [], customer: null, deliveryInfo: null, lastSale: null, seller: currentSeller, discount: 0, discountType: 'R$' });
+
+  },                                
 }));

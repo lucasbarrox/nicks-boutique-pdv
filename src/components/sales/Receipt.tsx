@@ -36,12 +36,15 @@ const getVariantDetailsBySku = (sku: string) => {
  */
 export function Receipt({ sale }: ReceiptProps) {
   // Cláusula de guarda: Se não houver dados de venda, não renderiza nada para evitar erros.
-  if (!sale) {
-    return null;
-  }
+  if (!sale) return null;
 
   // Busca os dados completos do cliente usando o ID salvo na venda, para podermos exibir o telefone.
   const customer = sale.customerId ? db.customers.getById(sale.customerId) : null;
+
+  // Calcula o valor do desconto dependendo do tipo (% ou valor fixo).
+  const discountValue = sale.discountType === '%'
+    ? (sale.totalAmount * sale.discount) / 100
+    : sale.discount;
 
   return (
     // O container principal com estilos base para impressão: fonte monoespaçada, texto pequeno e preto.
@@ -108,6 +111,15 @@ export function Receipt({ sale }: ReceiptProps) {
           <span>Subtotal:</span>
           <span>R$ {sale.totalAmount.toFixed(2)}</span>
         </div>
+        
+        {/* LINHA DE DESCONTO ADICIONADA */}
+        {discountValue > 0 && (
+          <div className="flex justify-between">
+            <span>Desconto ({sale.discountType === '%' ? `${sale.discount}%` : 'Fixo'}):</span>
+            <span>- R$ {discountValue.toFixed(2)}</span>
+          </div>
+        )}
+
         <div className="flex justify-between">
           <span>Entrega:</span>
           <span>R$ {sale.deliveryFee.toFixed(2)}</span>

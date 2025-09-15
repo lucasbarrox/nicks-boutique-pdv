@@ -81,6 +81,7 @@ export interface Sale {
   items: SaleItem[];
   totalAmount: number;
   discount: number;
+  discountType: 'R$' | '%'; 
   deliveryFee: number;
   deliveryAddress: Address | null;
   deliveryNotes?: string; // Garantindo que este campo exista

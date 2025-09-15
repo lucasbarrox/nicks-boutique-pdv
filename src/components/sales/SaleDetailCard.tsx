@@ -27,6 +27,11 @@ const getVariantDetailsBySku = (sku: string) => {
  * @param { sale: Sale } - Propriedades do componente, esperando um objeto 'sale'.
  */
 export function SaleDetailCard({ sale }: { sale: Sale }) {
+  // Calcula o valor do desconto dependendo do tipo (% ou valor fixo).
+  const discountValue = sale.discountType === '%'
+    ? (sale.totalAmount * sale.discount) / 100
+    : sale.discount;
+
   return (
     // O container principal do card, com fundo branco, padding, cantos arredondados e sombra.
     <div className="bg-white p-8 rounded-xl shadow-sm space-y-8 max-w-4xl mx-auto">
@@ -120,6 +125,15 @@ export function SaleDetailCard({ sale }: { sale: Sale }) {
                 <span>Subtotal</span>
                 <span>{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
+
+            {/* LINHA DE DESCONTO ADICIONADA */}
+            {discountValue > 0 && (
+              <div className="flex justify-between text-lg text-green-600">
+                  <span>Desconto</span>
+                  <span>- {discountValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+            )}
+
             <div className="flex justify-between text-lg">
                 <span>Taxa de Entrega</span>
                 <span>{sale.deliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
