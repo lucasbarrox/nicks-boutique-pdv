@@ -15,7 +15,6 @@ export function PDV() {
   const [sales] = useState<Sale[]>(() => db.sales.getAll());
   const [searchTerm, setSearchTerm] = useState('');
   
-  // O PDV agora só precisa dos estados e ações relevantes para ele
   const { 
     customer, seller, lastSale,
     setCustomer, setSeller, 
@@ -43,7 +42,6 @@ export function PDV() {
       <SelectCustomerModal isOpen={isCustomerModalOpen} onClose={() => setCustomerModalOpen(false)} onSelect={(c) => setCustomer(c as Customer)} />
       <SelectSellerModal isOpen={isSellerModalOpen} onClose={() => setSellerModalOpen(false)} onSelect={(s) => setSeller(s)} />
       
-      {/* O recibo agora lê o 'lastSale' diretamente do estado global */}
       <div id="printable-receipt">
         <Receipt sale={lastSale} />
       </div>

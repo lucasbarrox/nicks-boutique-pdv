@@ -11,7 +11,6 @@ export function Sellers() {
   const [sellers, setSellers] = useState(() => db.sellers.getAll());
   const navigate = useNavigate();
   
-  // NOVO: Estado para controlar o termo da busca
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleDelete = (seller: Seller) => {
@@ -22,7 +21,6 @@ export function Sellers() {
     }
   };
 
-  // NOVO: Lógica de filtro que busca no nome e no telefone
   const filteredSellers = useMemo(() => {
     if (!searchTerm.trim()) {
       return sellers;
@@ -30,7 +28,7 @@ export function Sellers() {
     const lowercasedTerm = searchTerm.toLowerCase();
     return sellers.filter(seller =>
       seller.name.toLowerCase().includes(lowercasedTerm) ||
-      (seller.phone && seller.phone.includes(lowercasedTerm)) // Busca no telefone se ele existir
+      (seller.phone && seller.phone.includes(lowercasedTerm))
     );
   }, [sellers, searchTerm]);
 
@@ -46,7 +44,6 @@ export function Sellers() {
         </Link>
       </div>
 
-      {/* NOVA BARRA DE PESQUISA */}
       <div className="relative mb-6">
         <Input 
           placeholder="Buscar por nome ou telefone..." 
@@ -66,7 +63,6 @@ export function Sellers() {
             </tr>
           </thead>
           <tbody>
-            {/* A lista agora usa os vendedores filtrados */}
             {filteredSellers.map(s => (
               <tr key={s.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">

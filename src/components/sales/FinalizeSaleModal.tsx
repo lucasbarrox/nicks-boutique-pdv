@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Payment } from '@/types';
 import { Trash2, Tag } from 'lucide-react';
-import { useCartStore } from '@/store/cart'; // Importa o store do carrinho
+import { useCartStore } from '@/store/cart';
 
 export interface FinalizeSaleDetails {
   payments: Payment[];
@@ -14,7 +14,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onFinalize: (details: FinalizeSaleDetails) => void;
-  total: number; // Esse total já deve vir com o desconto aplicado
+  total: number;
 }
 
 const paymentMethods: Payment['method'][] = ['Dinheiro', 'Pix', 'Débito', 'Crédito'];
@@ -23,7 +23,6 @@ export function FinalizeSaleModal({ isOpen, onClose, onFinalize, total }: Props)
   const [payments, setPayments] = useState<Payment[]>([]);
   const [currentAmount, setCurrentAmount] = useState('');
 
-  // Desconto vindo do store do carrinho
   const { discount, discountType, setDiscount } = useCartStore();
   const subtotal = useCartStore.getState().getSubtotal();
 
@@ -31,13 +30,11 @@ export function FinalizeSaleModal({ isOpen, onClose, onFinalize, total }: Props)
     if (isOpen) {
       setPayments([]);
       setCurrentAmount(total > 0 ? total.toFixed(2) : '');
-      // Removido o reset do desconto para permitir digitação
-      // setDiscount(0, 'R$');
     }
   }, [isOpen, total]);
 
   const handleClose = () => {
-    setDiscount(0, 'R$'); // Reseta o desconto ao fechar
+    setDiscount(0, 'R$');
     onClose();
   };
 

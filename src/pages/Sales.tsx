@@ -34,21 +34,17 @@ export function Sales() {
                saleDate.getFullYear() === today.getFullYear();
       }
 
-      // Lógica de filtro por intervalo de data
       if (dateRange.from) {
-        // A CORREÇÃO: Substituir '-' por '/' força a interpretação como fuso horário local
         const fromDate = new Date(dateRange.from.replace(/-/g, '\/'));
-        fromDate.setHours(0, 0, 0, 0); // Garante que estamos pegando desde o início do dia
+        fromDate.setHours(0, 0, 0, 0);
         if (saleDate < fromDate) return false;
       }
       if (dateRange.to) {
-        // A CORREÇÃO: Mesma lógica aqui
         const toDate = new Date(dateRange.to.replace(/-/g, '\/'));
-        toDate.setHours(23, 59, 59, 999); // Garante que estamos pegando até o final do dia
+        toDate.setHours(23, 59, 59, 999);
         if (saleDate > toDate) return false;
       }
 
-      // Lógica de filtro por nome do cliente
       if (customerName && !sale.customerName?.toLowerCase().includes(customerName.toLowerCase())) {
         return false;
       }

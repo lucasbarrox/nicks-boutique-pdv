@@ -24,14 +24,12 @@ export interface CartItem {
   stock: number;
 }
 
-// AQUI ESTÁ A MUDANÇA PRINCIPAL
 export interface Address {
   id: string;
   street: string;
   number: string;
   complement?: string;
   neighborhood: string;
-  // Os campos city, state e zipCode foram removidos
 }
 
 export interface Customer {
@@ -56,7 +54,7 @@ export interface Seller {
 export interface DeliveryFee {
   id: string;
   neighborhood: string;
-  city: string; // Manteremos city aqui para o cadastro da taxa
+  city: string;
   fee: number;
 }
 
@@ -84,7 +82,7 @@ export interface Sale {
   discountType: 'R$' | '%'; 
   deliveryFee: number;
   deliveryAddress: Address | null;
-  deliveryNotes?: string; // Garantindo que este campo exista
+  deliveryNotes?: string;
   finalAmount: number;
   payments: Payment[];
   amountPaid: number;

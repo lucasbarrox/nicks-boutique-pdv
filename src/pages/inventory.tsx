@@ -14,7 +14,6 @@ export function Inventory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
-  // NOVO: Estado para controlar o termo da busca
   const [searchTerm, setSearchTerm] = useState('');
 
   const refreshProducts = () => {
@@ -51,7 +50,6 @@ export function Inventory() {
     }
   };
   
-  // NOVO: Lógica de filtro que busca no nome do produto e nos SKUs das variantes
   const filteredProducts = useMemo(() => {
     if (!searchTerm.trim()) {
       return products;
@@ -88,7 +86,6 @@ export function Inventory() {
           </button>
         </div>
 
-        {/* NOVA BARRA DE PESQUISA */}
         <div className="relative mb-6">
           <Input 
             placeholder="Buscar por nome ou SKU..." 
@@ -111,12 +108,10 @@ export function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {/* A lista agora usa os produtos filtrados */}
               {filteredProducts.flatMap(product =>
                 product.variants.map((variant, index) => (
                   <tr key={variant.sku} className="border-b hover:bg-gray-50">
                     <td className="p-4 font-bold">
-                      {/* Mostra o nome apenas na primeira linha da variante */}
                       {index === 0 ? product.name : ''}
                     </td>
                     <td className="p-4 text-sm text-gray-600">{variant.sku}</td>

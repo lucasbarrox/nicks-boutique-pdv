@@ -13,7 +13,6 @@ export function Deliveries() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFee, setEditingFee] = useState<DeliveryFee | null>(null);
 
-  // NOVO: Estado para controlar o termo da busca
   const [searchTerm, setSearchTerm] = useState('');
 
   const refreshFees = () => {
@@ -50,7 +49,6 @@ export function Deliveries() {
     }
   };
 
-  // NOVO: Lógica de filtro que busca no bairro e na cidade
   const filteredFees = useMemo(() => {
     if (!searchTerm.trim()) {
       return fees;
@@ -87,7 +85,6 @@ export function Deliveries() {
           </button>
         </div>
 
-        {/* NOVA BARRA DE PESQUISA */}
         <div className="relative mb-6">
           <Input 
             placeholder="Buscar por bairro ou cidade..." 
@@ -108,7 +105,6 @@ export function Deliveries() {
               </tr>
             </thead>
             <tbody>
-              {/* A lista agora usa as taxas filtradas */}
               {filteredFees.map(f => (
                 <tr key={f.id} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-bold">{f.neighborhood}</td>

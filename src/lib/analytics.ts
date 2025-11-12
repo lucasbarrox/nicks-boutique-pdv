@@ -1,16 +1,12 @@
 import { Sale, Product, Payment } from '@/types';
 
-// --- TIPOS E INTERFACES PARA OS DADOS DO DASHBOARD ---
 
 export type DateRange = { from: Date; to: Date };
 export type TopProduct = { product: Product; totalSold: number };
 export type PaymentMethodBreakdown = { [method: string]: number };
 export type SalesByDay = { date: string; total: number }[];
-// Adicionamos o tipo SalesByHour que estava faltando na última versão
 export type SalesByHour = { hour: string; sales: number; total: number }[];
 
-
-// --- FUNÇÃO AUXILIAR UNIVERSAL DE FILTRO ---
 
 const filterSalesByDate = (sales: Sale[], range?: DateRange): Sale[] => {
   const completedSales = sales.filter(s => s.status === 'Concluída');
@@ -23,7 +19,6 @@ const filterSalesByDate = (sales: Sale[], range?: DateRange): Sale[] => {
 };
 
 
-// --- FUNÇÕES DE ANÁLISE (AGORA COM SUPORTE A DATAS) ---
 
 export const calculateSalesMetrics = (sales: Sale[], range?: DateRange) => {
   const filteredSales = filterSalesByDate(sales, range);
@@ -122,7 +117,6 @@ export const getSalesByDay = (sales: Sale[], range: DateRange): SalesByDay => {
     });
 };
 
-// A FUNÇÃO QUE ESTAVA FALTANDO
 export const getSalesByHour = (sales: Sale[], range?: DateRange): SalesByHour => {
   const filteredSales = filterSalesByDate(sales, range);
   const hours = Array.from({ length: 24 }, (_, i) => ({

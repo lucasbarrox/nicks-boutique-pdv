@@ -8,7 +8,6 @@ import { FinalizeSaleModal } from '@/components/sales/FinalizeSaleModal';
 import { SaleSuccessModal } from '@/components/sales/SaleSuccessModal';
 import { DeliveryAddressModal } from '@/components/deliveries/DeliveryAddressModal';
 
-// Componente auxiliar local para criar botões padronizados.
 const Button = ({ children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
     {...props}
@@ -18,13 +17,8 @@ const Button = ({ children, ...props }: { children: React.ReactNode } & React.Bu
   </button>
 );
 
-/**
- * Componente Cart
- * Responsável por toda a interface e lógica do carrinho de compras,
- * incluindo a adição de entrega, desconto e a finalização da venda.
- */
+
 export function Cart() {
-  // Busca os estados e ações relevantes do nosso estado global (Zustand).
   const {
     items, customer, deliveryInfo, discount, discountType,
     setDeliveryInfo,
@@ -32,24 +26,17 @@ export function Cart() {
     getTotal, setLastSale
   } = useCartStore();
 
-  // Estados locais para controlar a visibilidade dos diferentes modais.
   const [isFinalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
-  /**
-   * Chamado quando um endereço é selecionado ou criado no modal de entrega.
-   * Atualiza o estado do carrinho com as informações de entrega.
-   */
+  
   const handleSelectAddress = (address: Address, fee: number, notes?: string) => {
     setDeliveryInfo({ address, fee, notes });
     toast.success("Entrega adicionada ao carrinho!");
   };
 
-  /**
-   * Chamado quando o usuário confirma o pagamento no modal de finalização.
-   * Reúne todos os dados da venda e a salva no banco de dados.
-   */
+  
   const handleFinalizeSale = (details: { payments: Payment[], amountPaid: number, changeDue: number }) => {
     const { seller, customer: currentCustomer, items: cartItems } = useCartStore.getState();
 
@@ -58,7 +45,6 @@ export function Cart() {
       return;
     }
 
-    // Monta o objeto 'sale' com todos os dados da transação.
     const saleData = {
       customerId: currentCustomer?.id || null,
       customerName: currentCustomer?.name,
@@ -86,17 +72,11 @@ export function Cart() {
     setIsSuccessModalOpen(true);
   };
 
-  /**
-   * Função para acionar a impressão do comprovante.
-   */
+  
   const handlePrint = () => {
     window.print();
   };
 
-  /**
-   * Chamado pelo modal de sucesso para iniciar uma nova venda.
-   * Limpa todos os dados do carrinho.
-   */
   const handleNewSale = () => {
     useCartStore.getState().clearCart();
     setIsSuccessModalOpen(false);
@@ -130,13 +110,11 @@ export function Cart() {
         onAddressSelect={handleSelectAddress}
       />
 
-      {/* Barra lateral do carrinho */}
       <aside className="bg-white p-6 flex flex-col h-full">
         <h2 className="text-2xl font-bold mb-4 border-b pb-3 flex justify-between items-center">
           Carrinho <span>({items.length})</span>
         </h2>
 
-        {/* Lista de itens */}
         <div className="flex-1 overflow-y-auto -mr-3 pr-3 space-y-2">
           {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-500">
@@ -185,7 +163,6 @@ export function Cart() {
           )}
         </div>
 
-        {/* Rodapé do carrinho */}
         <div className="mt-auto border-t pt-4 space-y-2">
           <div className="space-y-3">
             <button

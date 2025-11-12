@@ -11,7 +11,6 @@ import {
 import { Package, DollarSign, ShoppingCart, BarChart2, TrendingUp } from 'lucide-react';
 import { Sale, Product } from '@/types';
 
-// Sub-componente para os cards de estatísticas, para manter o código limpo
 const StatCard = ({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm flex items-center gap-4">
     <div className="bg-pink-100 p-3 rounded-full">
@@ -31,25 +30,23 @@ export function Dashboard() {
   const [products] = useState<Product[]>(() => db.products.getAll());
   const [period, setPeriod] = useState<Period>('week');
 
-  // useMemo para calcular o intervalo de datas baseado no período selecionado
   const dateRange = useMemo((): DateRange => {
     const to = new Date();
     const from = new Date();
-    to.setHours(23, 59, 59, 999); // Final do dia atual
+    to.setHours(23, 59, 59, 999);
 
     if (period === 'today') {
-      from.setHours(0, 0, 0, 0); // Início do dia atual
+      from.setHours(0, 0, 0, 0);
     } else if (period === 'week') {
-      from.setDate(from.getDate() - 6); // 7 dias atrás (incluindo hoje)
+      from.setDate(from.getDate() - 6);
       from.setHours(0, 0, 0, 0);
     } else if (period === 'month') {
-      from.setDate(1); // Primeiro dia do mês atual
+      from.setDate(1);
       from.setHours(0, 0, 0, 0);
     }
     return { from, to };
   }, [period]);
 
-  // useMemo para cada cálculo, passando o dateRange
   const metrics = useMemo(() => calculateSalesMetrics(sales, dateRange), [sales, dateRange]);
   const totalProfit = useMemo(() => calculateTotalProfit(sales, products, dateRange), [sales, products, dateRange]);
   const paymentBreakdown = useMemo(() => getSalesByPaymentMethod(sales, dateRange), [sales, dateRange]);

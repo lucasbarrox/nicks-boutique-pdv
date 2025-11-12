@@ -43,7 +43,6 @@ export function CustomerDetail() {
       const existingCustomer = db.customers.getById(customerId);
       if (!existingCustomer) return;
       
-      // Mantém os endereços existentes e atualiza o resto dos dados
       const updatedData: Customer = { 
         ...existingCustomer, 
         ...data, 
@@ -81,7 +80,6 @@ export function CustomerDetail() {
         onCancel={() => navigate(location.state?.from || '/clientes')} 
       />
 
-      {/* NOVA SEÇÃO: MOSTRA ENDEREÇOS SALVOS (APENAS NA EDIÇÃO) */}
       {!isNew && customer && customer.addresses?.length > 0 && (
         <div className="mt-8 border-t pt-6">
           <h3 className="text-lg font-bold flex items-center gap-2 mb-4">

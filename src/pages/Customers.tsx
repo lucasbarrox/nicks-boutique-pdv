@@ -11,7 +11,6 @@ export function Customers() {
   const [customers, setCustomers] = useState(() => db.customers.getAll());
   const navigate = useNavigate();
   
-  // NOVO: Estado para controlar o termo da busca
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleDelete = (customer: Customer) => {
@@ -22,7 +21,6 @@ export function Customers() {
     }
   };
 
-  // NOVO: Lógica de filtro que busca no nome e no telefone
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) {
       return customers;
@@ -46,7 +44,6 @@ export function Customers() {
         </Link>
       </div>
 
-      {/* NOVA BARRA DE PESQUISA */}
       <div className="relative mb-6">
         <Input 
           placeholder="Buscar por nome ou telefone..." 
@@ -67,7 +64,6 @@ export function Customers() {
             </tr>
           </thead>
           <tbody>
-            {/* A lista agora usa os clientes filtrados */}
             {filteredCustomers.map(c => (
               <tr key={c.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">
