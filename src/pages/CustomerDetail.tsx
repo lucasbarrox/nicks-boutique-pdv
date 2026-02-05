@@ -1,101 +1,75 @@
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '@/lib/db';
-import { Customer } from '@/types';
-import { CustomerForm } from '@/components/customers/CustomerForm';
-import { toast } from 'sonner';
-import { ArrowLeft, Home } from 'lucide-react';
-import { useCartStore } from '@/store/cart';
+import { Customer, Sale } from '@/types';
+import { User, Phone, MapPin, Loader2, ArrowLeft } from 'lucide-react';
 
 export function CustomerDetail() {
-  const { customerId } = useParams<{ customerId: string }>();
+  const { customerId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [customer, setCustomer] = useState<Customer | null>(null);
-
-  const isNew = customerId === 'novo';
+  const [history, setHistory] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (customerId && !isNew) {
-      const foundCustomer = db.customers.getById(customerId);
-      if (foundCustomer) {
-        setCustomer(foundCustomer);
-      } else {
-        toast.error("Cliente não encontrado.");
-        navigate('/clientes');
+    async function load() {
+      if (!customerId) return;
+      try {
+        const [allCustomers, allSales] = await Promise.all([
+           db.customers.getAll(),
+           db.sales.getAll()
+        ]);
+        
+        const found = allCustomers.find(c => c.id === customerId);
+        if (!found) {
+            navigate('/clientes'); 
+            return;
+        }
+
+        setCustomer(found);
+        
+        // CORREÇÃO AQUI: Usamos 'customer_id' para filtrar
+        setHistory(allSales.filter(s => s.customer_id === customerId));
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, [customerId, isNew, navigate]);
+    load();
+  }, [customerId, navigate]);
 
-  const handleSave = (data: Omit<Customer, 'id' | 'addresses'>) => {
-    const cameFromPDV = location.state?.from === '/';
-
-    if (isNew) {
-      const newCustomer = db.customers.create({ ...data, addresses: [] }); // Cria cliente com array de endereços vazio
-      toast.success(`Cliente "${newCustomer.name}" criado!`);
-      
-      if (cameFromPDV) {
-        useCartStore.getState().setCustomer(newCustomer);
-        navigate('/');
-        return;
-      }
-    } else if (customerId) {
-      const existingCustomer = db.customers.getById(customerId);
-      if (!existingCustomer) return;
-      
-      const updatedData: Customer = { 
-        ...existingCustomer, 
-        ...data, 
-        id: customerId,
-      };
-      db.customers.update(updatedData);
-      toast.success("Cliente atualizado!");
-    }
-    navigate('/clientes');
-  };
-
-  if (!isNew && !customer) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p>Carregando cliente...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-pink-primary" /></div>;
+  if (!customer) return null;
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate(location.state?.from || '/clientes')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <ArrowLeft />
-        </button>
+    <div className="p-6 max-w-5xl mx-auto">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 mb-6 hover:text-pink-primary"><ArrowLeft size={20} /> Voltar</button>
+      
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center text-pink-600">
+            <User size={40} />
+        </div>
         <div>
-            <h2 className="text-2xl font-bold">{isNew ? 'Novo Cliente' : 'Editar Cliente'}</h2>
-            {!isNew && <p className="text-gray-600">{customer?.name}</p>}
+            <h1 className="text-3xl font-bold text-gray-800">{customer.name}</h1>
+            <div className="flex gap-4 mt-2 text-gray-600">
+                <span className="flex items-center gap-1"><Phone size={16}/> {customer.phone || 'Sem telefone'}</span>
+                <span className="flex items-center gap-1"><MapPin size={16}/> {customer.addresses?.length || 0} locais salvos</span>
+            </div>
         </div>
       </div>
 
-      <CustomerForm 
-        customerToEdit={isNew ? undefined : customer} 
-        onSave={handleSave} 
-        onCancel={() => navigate(location.state?.from || '/clientes')} 
-      />
-
-      {!isNew && customer && customer.addresses?.length > 0 && (
-        <div className="mt-8 border-t pt-6">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-            <Home size={20} />
-            Endereços Salvos
-          </h3>
-          <div className="space-y-3">
-            {customer.addresses.map(addr => (
-              <div key={addr.id} className="p-3 bg-gray-50 border rounded-lg text-sm">
-                <p className="font-semibold">{addr.street}, {addr.number || 'S/N'}</p>
-                <p className="text-gray-600">{addr.neighborhood}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <h2 className="text-xl font-bold mb-4">Histórico de Compras</h2>
+      <div className="space-y-4">
+        {history.map(sale => (
+            <div key={sale.id} className="bg-white p-4 rounded-lg border flex justify-between items-center">
+                <div>
+                    <p className="font-bold">{sale.displayId || sale.display_id}</p>
+                    <p className="text-sm text-gray-500">{new Date(sale.date).toLocaleDateString()}</p>
+                </div>
+                <p className="font-bold text-green-600">{sale.total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+            </div>
+        ))}
+        {history.length === 0 && <p className="text-gray-500">Nenhuma compra realizada ainda.</p>}
+      </div>
     </div>
   );
 }
