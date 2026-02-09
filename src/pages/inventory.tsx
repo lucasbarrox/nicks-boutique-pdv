@@ -1,40 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Package, Pencil, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import { db } from '@/lib/db';
 import { Product } from '@/types';
 import { ProductForm } from '@/components/products/ProductForm';
-import { toast } from 'sonner';
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '@/hooks/useProducts';
 
 export function Inventory() {
-  
-  // 1. Estados iniciam vazios ou carregando
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Estados locais apenas para UI (Busca e Modal)
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Controle do Modal de criar/editar
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
 
-  // 2. Buscar dados na nuvem ao abrir a página
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  const { data: products = [], isLoading } = useProducts();
+  const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct();
+  const deleteMutation = useDeleteProduct();
 
-  async function loadProducts() {
-    try {
-      setIsLoading(true);
-      const data = await db.products.getAll();
-      setProducts(data);
-    } catch (error) {
-      console.error("Erro ao carregar estoque:", error);
-      toast.error("Erro ao carregar produtos.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // 3. Filtro de busca (Local, já que baixamos a lista)
   const filteredProducts = useMemo(() => 
     products.filter(p => 
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -42,40 +22,32 @@ export function Inventory() {
     ), 
   [products, searchTerm]);
 
-  // 4. Função para Salvar (Criar ou Editar)
+  // Ações
   const handleSaveProduct = async (productData: any) => {
     try {
-      // Se tiver ID, é edição. Se não, é criação.
       if (editingProduct) {
-        await db.products.update({ ...productData, id: editingProduct.id });
-        toast.success('Produto atualizado com sucesso!');
+        // Atualizar
+        await updateMutation.mutateAsync({ 
+            ...productData, 
+            id: editingProduct.id 
+        });
       } else {
-        await db.products.create(productData);
-        toast.success('Produto criado com sucesso!');
+        // Criar
+        await createMutation.mutateAsync(productData);
       }
       
-      // Fecha o modal e recarrega a lista da nuvem
+      // Fecha modal e limpa estado
       setIsModalOpen(false);
       setEditingProduct(undefined);
-      await loadProducts();
       
     } catch (error) {
-      console.error(error);
-      toast.error('Erro ao salvar produto.');
+      console.error('Erro ao salvar produto:', error);
     }
   };
 
-  // 5. Função para Deletar
   const handleDeleteProduct = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
-      try {
-        await db.products.remove(id);
-        toast.success('Produto removido.');
-        await loadProducts();
-      } catch (error) {
-        console.error(error);
-        toast.error('Erro ao remover produto.');
-      }
+      await deleteMutation.mutateAsync(id);
     }
   };
 
@@ -89,7 +61,7 @@ export function Inventory() {
     setIsModalOpen(true);
   };
 
-  // Renderização da tela
+  // Loading gerenciado pelo React Query
   if (isLoading) {
      return (
       <div className="h-full flex flex-col items-center justify-center text-pink-primary gap-4">

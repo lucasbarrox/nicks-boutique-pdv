@@ -1,39 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, Loader2, PackageX } from 'lucide-react';
-import { db } from '@/lib/db';
-import { Product } from '@/types';
 import { ProductCard } from '@/components/products/ProductCard';
 import { Cart } from '@/components/cart/Cart';
 import { useCartStore } from '@/store/cart';
 import { SelectCustomerModal } from '@/components/customers/SelectCustomerModal';
 import { SelectSellerModal } from '@/components/sellers/SelectSellerModal';
+import { useProducts } from '@/hooks/useProducts';
 
 export function PDV() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Estados de UI
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modais
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isSellerModalOpen, setIsSellerModalOpen] = useState(false);
 
-  // Store
+  // Store do Carrinho
   const { setCustomer, setSeller, customer, seller } = useCartStore();
 
-  // Carregar produtos ao iniciar
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await db.products.getAll();
-        setProducts(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    load();
-  }, []);
+  // Dados do Servidor 
+  const { data: products = [], isLoading } = useProducts();
 
   // Filtragem
   const filteredProducts = products.filter(p => 
@@ -101,7 +85,6 @@ export function PDV() {
       </div>
 
       {/* ÁREA DO CARRINHO (DIREITA) */}
-      {/* Aqui é onde o carrinho é chamado! */}
       <Cart />
 
       {/* Modais de Seleção */}
