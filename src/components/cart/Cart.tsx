@@ -1,219 +1,148 @@
-import { useState, useMemo } from 'react';
-import { db } from '@/lib/db';
-import { Address, Payment } from '@/types';
-import { Package, Truck, Minus, ShoppingCart, Trash2, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingCart, Trash2, Plus, Minus, PackageOpen } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
-import { toast } from 'sonner';
-import { FinalizeSaleModal } from '@/components/sales/FinalizeSaleModal';
-import { SaleSuccessModal } from '@/components/sales/SaleSuccessModal';
-import { DeliveryAddressModal } from '@/components/deliveries/DeliveryAddressModal';
-
-const Button = ({ children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-  <button
-    {...props}
-    className="w-full px-6 py-3 rounded-lg font-bold transition-colors bg-pink-primary text-white hover:bg-pink-primary/90 disabled:opacity-50"
-  >
-    {children}
-  </button>
-);
-
+import { FinalizeSaleModal } from '../sales/FinalizeSaleModal';
+import { SaleSuccessModal } from '../sales/SaleSuccessModal';
+import { Sale } from '@/types';
 
 export function Cart() {
-  const {
-    items, customer, deliveryInfo, discount, discountType,
-    setDeliveryInfo,
-    removeItem, updateQuantity,
-    getTotal, setLastSale
-  } = useCartStore();
+  const { items, removeItem, updateQuantity, customer } = useCartStore();
+  const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [lastSale, setLastSale] = useState<Sale | null>(null);
 
-  const [isFinalizeModalOpen, setFinalizeModalOpen] = useState(false);
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  // Cálculo local do total (Preço x Quantidade)
+  const total = items.reduce((acc, item) => acc + (item.product.basePrice * item.quantity), 0);
 
-  
-  const handleSelectAddress = (address: Address, fee: number, notes?: string) => {
-    setDeliveryInfo({ address, fee, notes });
-    toast.success("Entrega adicionada ao carrinho!");
+  const handleSuccess = (sale: Sale) => {
+    setLastSale(sale);
+    setIsSuccessOpen(true);
   };
 
-  
-  const handleFinalizeSale = (details: { payments: Payment[], amountPaid: number, changeDue: number }) => {
-    const { seller, customer: currentCustomer, items: cartItems } = useCartStore.getState();
-
-    if (!seller) {
-      toast.error("Por favor, selecione um vendedor.");
-      return;
-    }
-
-    const saleData = {
-      customerId: currentCustomer?.id || null,
-      customerName: currentCustomer?.name,
-      sellerId: seller?.id || null,
-      sellerName: seller?.name,
-      items: cartItems.map(i => ({ sku: i.sku, quantity: i.quantity, price: i.unitPrice })),
-      totalAmount: useCartStore.getState().getSubtotal(),
-      discount: discount,
-      discountType: discountType, // garante salvar desconto
-      deliveryFee: deliveryInfo?.fee || 0,
-      deliveryAddress: deliveryInfo?.address || null,
-      deliveryNotes: deliveryInfo?.notes,
-      finalAmount: getTotal(),
-      payments: details.payments,
-      amountPaid: details.amountPaid,
-      changeDue: details.changeDue,
-      timestamp: new Date().toISOString(),
-      status: 'Concluída' as const,
-    };
-
-    const newSale = db.sales.create(saleData as any);
-    setLastSale(newSale);
-
-    setFinalizeModalOpen(false);
-    setIsSuccessModalOpen(true);
-  };
-
-  
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleNewSale = () => {
-    useCartStore.getState().clearCart();
-    setIsSuccessModalOpen(false);
-  };
-
-  const subtotal = useCartStore.getState().getSubtotal();
-  const calculatedDiscount = useMemo(() => {
-    if (discountType === '%') {
-      return (subtotal * discount) / 100;
-    }
-    return discount;
-  }, [subtotal, discount, discountType]);
+  // Se o carrinho estiver vazio
+  if (items.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-gray-400 bg-white border-l">
+        <PackageOpen size={64} className="mb-4 opacity-50" />
+        <p className="text-lg font-medium">Seu carrinho está vazio</p>
+        <p className="text-sm text-center mt-2">Adicione produtos através da lista ao lado.</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      <FinalizeSaleModal
-        isOpen={isFinalizeModalOpen}
-        onClose={() => setFinalizeModalOpen(false)}
-        total={getTotal()}
-        onFinalize={handleFinalizeSale}
-      />
-      <SaleSuccessModal
-        isOpen={isSuccessModalOpen}
-        onNewSale={handleNewSale}
-        onPrint={handlePrint}
-      />
-      <DeliveryAddressModal
-        isOpen={isAddressModalOpen}
-        onClose={() => setIsAddressModalOpen(false)}
-        customer={customer}
-        onAddressSelect={handleSelectAddress}
-      />
+      <div className="flex flex-col h-full bg-white border-l shadow-xl w-full md:w-[400px]">
+        {/* Cabeçalho */}
+        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="text-pink-primary" size={20} />
+            <h2 className="font-bold text-gray-800">Carrinho</h2>
+          </div>
+          <span className="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-1 rounded-full">
+            {items.length} itens
+          </span>
+        </div>
 
-      <aside className="bg-white p-6 flex flex-col h-full">
-        <h2 className="text-2xl font-bold mb-4 border-b pb-3 flex justify-between items-center">
-          Carrinho <span>({items.length})</span>
-        </h2>
+        {/* Lista de Itens */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {items.map((item) => (
+            <div key={item.variant.sku} className="flex gap-4 p-3 bg-white border rounded-lg shadow-sm hover:border-pink-200 transition-colors">
+              {/* Imagem (se houver, senão placeholder) */}
+              <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
+                {item.product.image_url ? (
+                   <img src={item.product.image_url} alt="" className="w-full h-full object-cover rounded-md" />
+                ) : (
+                   <span className="text-xs text-gray-400 font-bold">{item.variant.size}</span>
+                )}
+              </div>
 
-        <div className="flex-1 overflow-y-auto -mr-3 pr-3 space-y-2">
-          {items.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-500">
-              <ShoppingCart size={48} className="mb-4" />
-              <p>Nenhum item</p>
-            </div>
-          ) : (
-            items.map(item => (
-              <div key={item.sku} className="flex items-center gap-2 p-2">
-                <div className="bg-gray-100 rounded p-2">
-                  <Package size={20} className="text-gray-400" />
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900 text-sm line-clamp-1">{item.product.name}</h3>
+                  <p className="text-xs text-gray-500">
+                    Cor: {item.variant.color} | Tam: {item.variant.size}
+                  </p>
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-sm leading-tight">{item.productName}</p>
-                  <p className="text-xs text-gray-500">{item.variantInfo}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <button
-                      onClick={() => item.quantity > 1 && updateQuantity(item.sku, item.quantity - 1)}
-                      className="p-1 rounded-full"
-                      disabled={item.quantity <= 1}
+                
+                <div className="flex justify-between items-end mt-2">
+                  <p className="font-bold text-pink-primary">
+                    {item.product.basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                  
+                  {/* Controles de Quantidade */}
+                  <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border">
+                    <button 
+                      onClick={() => updateQuantity(item.variant.sku, Math.max(1, item.quantity - 1))}
+                      className="p-1 hover:bg-white rounded shadow-sm transition-all"
                     >
-                      <Minus size={12} />
+                      <Minus size={14} />
                     </button>
-                    <span className="font-bold text-sm w-5 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.sku, item.quantity + 1)}
-                      className="p-1 rounded-full"
+                    <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                    <button 
+                      onClick={() => updateQuantity(item.variant.sku, item.quantity + 1)}
+                      className="p-1 hover:bg-white rounded shadow-sm transition-all"
                     >
-                      <Plus size={12} />
+                      <Plus size={14} />
                     </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-base">
-                    {(item.unitPrice * item.quantity).toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </p>
-                  <button onClick={() => removeItem(item.sku)} className="text-red-500 mt-1">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
               </div>
-            ))
-          )}
+
+              {/* Botão Remover */}
+              <button 
+                onClick={() => removeItem(item.variant.sku)}
+                className="text-gray-400 hover:text-red-500 self-start p-1"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-auto border-t pt-4 space-y-2">
-          <div className="space-y-3">
-            <button
-              onClick={() =>
-                customer ? setIsAddressModalOpen(true) : toast.error('Selecione um cliente!')
-              }
-              disabled={!customer}
-              className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg disabled:opacity-50"
-            >
-              <Truck size={16} />
-              {deliveryInfo ? `Entrega: ${deliveryInfo.address?.street || 'Endereço'}` : 'Adicionar Entrega'}
-            </button>
-
-          </div>
-
-          <div className="flex justify-between font-semibold">
-            <span>Subtotal</span>
-            <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
-
-          {deliveryInfo && (
-            <div className="flex justify-between font-semibold">
-              <span>Entrega</span>
-              <span>
-                {deliveryInfo.fee.toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-              </span>
+        {/* Rodapé e Totais */}
+        <div className="p-6 bg-gray-50 border-t space-y-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
-          )}
-
-          {calculatedDiscount > 0 && (
-            <div className="flex justify-between font-semibold text-red-500">
-              <span>Desconto ({discountType === '%' ? `${discount}%` : 'Fixo'})</span>
-              <span>
-                - {calculatedDiscount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </span>
+            {customer && (
+              <div className="flex justify-between text-blue-600 font-medium">
+                <span>Cliente</span>
+                <span className="truncate max-w-[150px]">{customer.name}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
+              <span>Total</span>
+              <span>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
-          )}
-
-          <div className="flex justify-between font-bold text-2xl text-pink-primary pt-2 border-t">
-            <span>Total</span>
-            <span>{getTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
 
-          <Button onClick={() => setFinalizeModalOpen(true)} disabled={items.length === 0}>
-            Finalizar Venda
-          </Button>
+          <button
+            onClick={() => setIsFinalizeOpen(true)}
+            className="w-full bg-pink-primary hover:bg-pink-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-pink-200 transition-all active:scale-95 flex justify-between px-6"
+          >
+            <span>Finalizar Venda</span>
+            <span>→</span>
+          </button>
         </div>
-      </aside>
+      </div>
+
+      {/* Modais */}
+      <FinalizeSaleModal 
+        isOpen={isFinalizeOpen} 
+        onClose={() => setIsFinalizeOpen(false)}
+        onSuccess={handleSuccess}
+      />
+
+      {lastSale && (
+        <SaleSuccessModal
+          isOpen={isSuccessOpen}
+          onClose={() => setIsSuccessOpen(false)}
+          sale={lastSale}
+        />
+      )}
     </>
   );
 }
