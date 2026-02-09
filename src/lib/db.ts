@@ -1,32 +1,32 @@
 import { supabase } from './supabase';
 import { Product, Sale, Customer, Seller, DeliveryFee } from "@/types";
+import { DbProduct, DbProductVariant, DbSale, DbCustomer, DbSeller, DbDeliveryFee } from "@/types/database";
+import { Mappers } from './mappers';
 
 const STORE_ID = '00000000-0000-0000-0000-000000000000';
 
 export const db = {
   products: {
-    getAll: async () => {
+    getAll: async (): Promise<Product[]> => {
       const { data, error } = await supabase
         .from('products')
         .select('*, variants:product_variants(*)')
-        .eq('store_id', STORE_ID);
+        .eq('store_id', STORE_ID)
+        .order('name');
 
       if (error) {
         console.error('Erro ao buscar produtos:', error);
         return [];
       }
       
-      return data.map((p: any) => ({
-        ...p,
-        basePrice: p.base_price,
-        imageUrl: p.image_url
-      })) as Product[];
+      // Mapper para converter DbProduct -> Product
+      return (data as any[]).map(p => Mappers.product(p, p.variants));
     },
 
-    create: async (newProductData: Omit<Product, 'id'>) => {
+    create: async (newProductData: Omit<Product, 'id'>): Promise<Product> => {
       const { variants, ...productInfo } = newProductData;
 
-      const dbPayload = {
+      const dbPayload: Partial<DbProduct> = {
         name: productInfo.name,
         description: productInfo.description,
         category: productInfo.category,
@@ -44,6 +44,8 @@ export const db = {
 
       if (prodError || !product) throw prodError;
 
+      let createdVariants: DbProductVariant[] = [];
+
       if (variants && variants.length > 0) {
         const variantsWithId = variants.map(v => ({
           sku: v.sku,
@@ -53,19 +55,22 @@ export const db = {
           product_id: product.id,
         }));
 
-        const { error: varError } = await supabase
+        const { data: vars, error: varError } = await supabase
           .from('product_variants')
-          .insert(variantsWithId);
+          .insert(variantsWithId)
+          .select();
         
         if (varError) throw varError;
+        createdVariants = vars as DbProductVariant[];
       }
-      return product;
+      
+      return Mappers.product(product as DbProduct, createdVariants);
     },
 
-    update: async (updatedProduct: Product) => {
+    update: async (updatedProduct: Product): Promise<void> => {
        const { variants, ...productInfo } = updatedProduct;
        
-       const dbPayload = {
+       const dbPayload: Partial<DbProduct> = {
         name: productInfo.name,
         description: productInfo.description,
         category: productInfo.category,
@@ -118,14 +123,14 @@ export const db = {
        }
     },
 
-    remove: async (productId: string) => {
+    remove: async (productId: string): Promise<void> => {
       await supabase.from('product_variants').delete().eq('product_id', productId);
       await supabase.from('products').delete().eq('id', productId);
     }
   },
 
   sales: {
-    getAll: async () => {
+    getAll: async (): Promise<Sale[]> => {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
@@ -134,18 +139,13 @@ export const db = {
       
       if (error) return [];
       
-      return data.map((s: any) => ({
-        ...s,
-        displayId: s.display_id,
-        customerName: s.customer_name,
-        sellerName: s.seller_name,
-        paymentMethod: s.payment_method
-      })) as Sale[];
+      return (data as DbSale[]).map(Mappers.sale);
     },
 
-    create: async (saleData: any) => {
+    create: async (saleData: any): Promise<Sale> => {
         const displayId = `#${Date.now().toString().slice(-4)}`;
 
+        // Mapeamento Input (App -> DB)
         const dbPayload = {
             display_id: displayId,
             store_id: STORE_ID,
@@ -180,14 +180,19 @@ export const db = {
   },
 
   customers: {
-    getAll: async () => {
+    getAll: async (): Promise<Customer[]> => {
       const { data } = await supabase.from('customers').select('*').eq('store_id', STORE_ID);
-      return (data as Customer[]) || [];
+      return (data as DbCustomer[] || []).map(Mappers.customer);
     },
-    create: async (data: any) => {
-       const { data: newCustomer, error } = await supabase.from('customers').insert([{ ...data, store_id: STORE_ID }]).select().single();
+    create: async (data: any): Promise<Customer> => {
+       const { data: newCustomer, error } = await supabase
+        .from('customers')
+        .insert([{ ...data, store_id: STORE_ID }])
+        .select()
+        .single();
+       
        if (error) throw error;
-       return newCustomer;
+       return Mappers.customer(newCustomer as DbCustomer);
     },
     update: async () => {},
     remove: async () => {},
@@ -195,23 +200,23 @@ export const db = {
   },
 
   sellers: {
-    getAll: async () => {
+    getAll: async (): Promise<Seller[]> => {
         const { data } = await supabase.from('sellers').select('*').eq('store_id', STORE_ID);
-        return data?.map((s: any) => ({ ...s, pixKey: s.pix_key })) as Seller[] || [];
+        return (data as DbSeller[] || []).map(Mappers.seller);
     },
-    create: async (data: Omit<Seller, 'id'>) => {
+    create: async (data: Omit<Seller, 'id'>): Promise<Seller> => {
         const dbPayload = { name: data.name, pix_key: data.pixKey, store_id: STORE_ID };
         const { data: newSeller } = await supabase.from('sellers').insert([dbPayload]).select().single();
-        return newSeller;
+        return Mappers.seller(newSeller as DbSeller);
     },
     update: async () => {},
     remove: async () => {},
   },
   
   deliveryFees: {
-      getAll: async () => {
+      getAll: async (): Promise<DeliveryFee[]> => {
         const { data } = await supabase.from('delivery_fees').select('*').eq('store_id', STORE_ID);
-        return (data as DeliveryFee[]) || [];
+        return (data as DbDeliveryFee[] || []).map(Mappers.deliveryFee);
       },
       setAll: () => {},
       create: async () => null,
