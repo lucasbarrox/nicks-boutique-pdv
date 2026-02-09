@@ -16,23 +16,28 @@ import { SellerDetail } from './pages/SellerDetail';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <>
       <Toaster richColors position="top-right" />
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<PDV />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/vendas" element={<Sales />} />
-          <Route path="/vendas/:saleId" element={<SaleDetail />} />
-          <Route path="/estoque" element={<Inventory />} />
-          <Route path="/estoque/:productId" element={<ProductDetail />} />
-          <Route path="/clientes" element={<Customers />} />
-          <Route path="/clientes/:customerId" element={<CustomerDetail />} />
-          <Route path="/entregas" element={<Deliveries />} />
-          <Route path="/vendedores" element={<Sellers />} />
-          <Route path="/vendedores/:sellerId" element={<SellerDetail />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+ 
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route element={<AppLayout />}>
+
+            <Route path="/" element={<PDV />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/vendas" element={<Sales />} />
+            <Route path="/vendas/:saleId" element={<SaleDetail />} />
+            <Route path="/estoque" element={<Inventory />} />
+            <Route path="/estoque/:productId" element={<ProductDetail />} />
+            <Route path="/clientes" element={<Customers />} />
+            <Route path="/clientes/:customerId" element={<CustomerDetail />} />
+            <Route path="/entregas" element={<Deliveries />} />
+            <Route path="/vendedores" element={<Sellers />} />
+            <Route path="/vendedores/:sellerId" element={<SellerDetail />} />
+
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </>
   )
 }
