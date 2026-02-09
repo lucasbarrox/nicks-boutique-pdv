@@ -18,10 +18,8 @@ export function App() {
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" />
-
       <Routes>
         <Route element={<AppLayout />}>
-
           <Route path="/" element={<PDV />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vendas" element={<Sales />} />
@@ -33,7 +31,6 @@ export function App() {
           <Route path="/entregas" element={<Deliveries />} />
           <Route path="/vendedores" element={<Sellers />} />
           <Route path="/vendedores/:sellerId" element={<SellerDetail />} />
-
         </Route>
       </Routes>
     </BrowserRouter>
