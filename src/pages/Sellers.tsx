@@ -1,105 +1,67 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { Plus, UserCheck, Loader2 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { Seller } from '@/types';
-import { Link, useNavigate } from 'react-router-dom';
+import { SellerForm } from '@/components/sellers/SellerForm';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2, Edit, Search } from 'lucide-react';
-
-const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-3 border rounded-lg" />;
 
 export function Sellers() {
-  const [sellers, setSellers] = useState(() => db.sellers.getAll());
-  const navigate = useNavigate();
-  
-  const [searchTerm, setSearchTerm] = useState('');
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleDelete = (seller: Seller) => {
-    if (window.confirm(`Tem certeza que deseja excluir o vendedor "${seller.name}"?`)) {
-      db.sellers.remove(seller.id);
-      setSellers(db.sellers.getAll());
-      toast.success("Vendedor excluído com sucesso.");
+  async function load() {
+    try {
+        const data = await db.sellers.getAll();
+        setSellers(data);
+    } finally {
+        setIsLoading(false);
     }
+  }
+
+  useEffect(() => { load() }, []);
+
+  const handleCreate = async (data: any) => {
+    await db.sellers.create(data);
+    setIsModalOpen(false);
+    load();
+    toast.success('Vendedor adicionado');
   };
 
-  const filteredSellers = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return sellers;
-    }
-    const lowercasedTerm = searchTerm.toLowerCase();
-    return sellers.filter(seller =>
-      seller.name.toLowerCase().includes(lowercasedTerm) ||
-      (seller.phone && seller.phone.includes(lowercasedTerm))
-    );
-  }, [sellers, searchTerm]);
+  if (isLoading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Vendedores</h2>
-        <Link 
-          to="/vendedores/novo" 
-          className="bg-pink-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-pink-primary/90 transition-colors"
-        >
-          Novo Vendedor
-        </Link>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-800">Vendedores</h1>
+        <button onClick={() => setIsModalOpen(true)} className="bg-pink-primary text-white px-4 py-2 rounded-lg flex gap-2 items-center">
+            <Plus size={20} /> Novo Vendedor
+        </button>
       </div>
 
-      <div className="relative mb-6">
-        <Input 
-          placeholder="Buscar por nome ou telefone..." 
-          className="pl-12 bg-gray-50"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {sellers.map(s => (
+            <Link key={s.id} to={`/vendedores/${s.id}`} className="bg-white p-6 rounded-xl shadow-sm border hover:border-pink-300 block">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-50 rounded-full text-blue-600"><UserCheck /></div>
+                    <div>
+                        <h3 className="font-bold">{s.name}</h3>
+                        <p className="text-sm text-gray-500">Chave Pix: {s.pixKey || '-'}</p>
+                    </div>
+                </div>
+            </Link>
+        ))}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="border-b bg-gray-50">
-            <tr>
-              <th className="p-4 font-semibold">Nome</th>
-              <th className="p-4 font-semibold">Telefone</th>
-              <th className="p-4 font-semibold text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSellers.map(s => (
-              <tr key={s.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">
-                  <span 
-                    onClick={() => navigate(`/vendedores/${s.id}`)}
-                    className="font-bold hover:text-pink-primary transition-colors cursor-pointer"
-                  >
-                    {s.name}
-                  </span>
-                </td>
-                <td className="p-4 text-gray-600">{s.phone || '-'}</td>
-                <td className="p-4 text-right space-x-2">
-                   <button 
-                    onClick={() => navigate(`/vendedores/${s.id}`)} 
-                    className="text-gray-400 hover:text-pink-primary p-2 rounded-full hover:bg-pink-50" 
-                    title="Editar Vendedor"
-                  >
-                    <Edit size={18}/>
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(s)} 
-                    className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" 
-                    title="Excluir Vendedor"
-                  >
-                    <Trash2 size={18}/>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredSellers.length === 0 && (
-            <div className="text-center py-16 text-gray-500">
-                <p>{searchTerm ? 'Nenhum vendedor encontrado.' : 'Nenhum vendedor cadastrado.'}</p>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-xl w-full max-w-lg">
+                <h2 className="text-xl font-bold mb-4">Novo Vendedor</h2>
+                <SellerForm onSubmit={handleCreate} onCancel={() => setIsModalOpen(false)} />
             </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
