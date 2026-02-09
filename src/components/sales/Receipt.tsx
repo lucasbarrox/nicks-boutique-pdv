@@ -1,138 +1,94 @@
 import { Sale } from '@/types';
-import { db } from '@/lib/db';
+import { MapPin, Phone } from 'lucide-react';
 
 interface ReceiptProps {
   sale: Sale | null;
 }
 
-const getVariantDetailsBySku = (sku: string) => {
-  const allProducts = db.products.getAll();
-  for (const product of allProducts) {
-    const variant = product.variants.find(v => v.sku === sku);
-    if (variant) {
-      return { product, variant };
-    }
-  }
-  return { product: null, variant: null };
-}
-
 export function Receipt({ sale }: ReceiptProps) {
   if (!sale) return null;
 
-  const customer = sale.customerId ? db.customers.getById(sale.customerId) : null;
-
-  const discountValue = sale.discountType === '%'
-    ? (sale.totalAmount * sale.discount) / 100
-    : sale.discount;
-
   return (
-    <div className="p-4 font-mono text-xs text-black bg-white">
-      <div className="text-center mb-4">
-        <h1 className="text-lg font-bold">Nick's Boutique</h1>
-        <p>Comprovante de Venda</p>
-        <p>--------------------------------</p>
-      </div>
-
-      <div className="mb-2">
-        <p><strong>Venda:</strong> {sale.displayId}</p>
-        <p><strong>Data:</strong> {new Date(sale.timestamp).toLocaleString('pt-BR')}</p>
-        <p><strong>Vendedor:</strong> {sale.sellerName || 'N/A'}</p>
-        <p><strong>Cliente:</strong> {sale.customerName || 'Cliente Avulso'}</p>
-        {customer?.phone && <p><strong>Telefone:</strong> {customer.phone}</p>}
-      </div>
-
-      {sale.deliveryAddress && (
-        <div className="mb-2">
-          <p>--------------------------------</p>
-          <p className="font-bold">ENTREGA:</p>
-          <p>{sale.deliveryAddress.street}, {sale.deliveryAddress.number || 'S/N'}</p>
-          <p>{sale.deliveryAddress.neighborhood}</p>
-          {sale.deliveryNotes && <p>Obs: {sale.deliveryNotes}</p>}
+    <div className="bg-white p-8 max-w-md mx-auto text-sm font-mono leading-relaxed text-gray-800 border shadow-sm">
+      
+      {/* Cabeçalho do Recibo */}
+      <div className="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
+        <h1 className="text-2xl font-bold uppercase tracking-wider mb-2">Nick's Boutique</h1>
+        <p className="text-gray-500 mb-1">Moda Feminina & Acessórios</p>
+        <p className="text-xs text-gray-400">CNPJ: 00.000.000/0001-00</p>
+        <div className="mt-4 flex flex-col items-center text-xs text-gray-500">
+           <span className="flex items-center gap-1"><MapPin size={12}/> Rua Exemplo, 123 - Centro</span>
+           <span className="flex items-center gap-1"><Phone size={12}/> (11) 99999-9999</span>
         </div>
-      )}
-
-      <p>--------------------------------</p>
-
-      <div className="my-2">
-        <div className="grid grid-cols-12 font-bold">
-          <div className="col-span-5">Item</div>
-          <div className="col-span-2 text-center">Qtd</div>
-          <div className="col-span-2 text-right">Preço</div>
-          <div className="col-span-3 text-right">Total</div>
-        </div>
-        {sale.items.map(item => {
-          const { product, variant } = getVariantDetailsBySku(item.sku);
-          return (
-            <div key={item.sku} className="grid grid-cols-12 mt-1">
-              <div className="col-span-5">
-                <p>{product?.name}</p>
-                <p className='text-[10px]'>({variant?.size}/{variant?.color})</p>
-              </div>
-              <div className="col-span-2 text-center">{item.quantity}</div>
-              <div className="col-span-2 text-right">{item.price.toFixed(2)}</div>
-              <div className="col-span-3 text-right">{(item.price * item.quantity).toFixed(2)}</div>
-            </div>
-          );
-        })}
       </div>
 
-      <p>--------------------------------</p>
-
-      <div className="mt-2 space-y-1">
+      {/* Dados da Venda */}
+      <div className="mb-6 space-y-1">
         <div className="flex justify-between">
-          <span>Subtotal:</span>
-          <span>R$ {sale.totalAmount.toFixed(2)}</span>
+          <span className="text-gray-500">Data:</span>
+          <span className="font-bold">
+            {new Date(sale.date).toLocaleString('pt-BR')}
+          </span>
         </div>
-
-        {discountValue > 0 && (
-          <div className="flex justify-between">
-            <span>Desconto ({sale.discountType === '%' ? `${sale.discount}%` : 'Fixo'}):</span>
-            <span>- R$ {discountValue.toFixed(2)}</span>
-          </div>
-        )}
-
         <div className="flex justify-between">
-          <span>Entrega:</span>
-          <span>R$ {sale.deliveryFee.toFixed(2)}</span>
+          <span className="text-gray-500">Venda Nº:</span>
+          <span className="font-bold">{sale.displayId || sale.display_id}</span>
         </div>
-        <div className="flex justify-between font-bold text-sm">
-          <span>TOTAL DA VENDA:</span>
-          <span>R$ {sale.finalAmount.toFixed(2)}</span>
+        <div className="flex justify-between">
+            <span className="text-gray-500">Cliente:</span>
+            <span className="font-bold truncate max-w-[200px]">{sale.customerName || 'Cliente Avulso'}</span>
         </div>
-      </div>
-
-      <p>--------------------------------</p>
-
-      <div className="mt-2">
-        <p className="font-bold">PAGAMENTO:</p>
-        {sale.payments && sale.payments.length > 0 ? (
-          <>
-            {sale.payments.map((p, index) => (
-                <div key={index} className="flex justify-between">
-                    <span>{p.method}:</span>
-                    <span>R$ {p.amount.toFixed(2)}</span>
-                </div>
-            ))}
-            <div className="flex justify-between mt-1">
-                <span>Total Pago:</span>
-                <span>R$ {sale.amountPaid.toFixed(2)}</span>
+        {sale.sellerName && (
+            <div className="flex justify-between">
+                <span className="text-gray-500">Vendedor:</span>
+                <span>{sale.sellerName}</span>
             </div>
-            {sale.changeDue > 0 && (
-                <div className="flex justify-between font-bold">
-                    <span>TROCO:</span>
-                    <span>R$ {sale.changeDue.toFixed(2)}</span>
-                </div>
-            )}
-          </>
-        ) : (
-          <div className="flex justify-between">
-            <span>Método:</span>
-            <span>{(sale as any).paymentMethod}</span>
-          </div>
         )}
       </div>
-      <div className="text-center mt-4">
-        <p>Obrigada princesa, até a próxima compra.</p>
+
+      {/* Tabela de Itens */}
+      <table className="w-full mb-6 border-collapse">
+        <thead>
+          <tr className="border-b border-gray-800 text-left text-xs uppercase">
+            <th className="py-2 w-full">Item</th>
+            <th className="py-2 px-2 text-right">Qtd</th>
+            <th className="py-2 text-right whitespace-nowrap">Valor</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {sale.items.map((item, index) => (
+            <tr key={`${item.sku}-${index}`}>
+              <td className="py-2 pr-2 align-top">
+                <p className="font-bold">{item.productName}</p>
+                <p className="text-xs text-gray-500">{item.size} / {item.color}</p>
+              </td>
+              <td className="py-2 px-2 text-right align-top">{item.quantity}</td>
+              <td className="py-2 text-right align-top font-medium">
+                {(item.quantity * item.priceAtSale).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Totais */}
+      <div className="border-t-2 border-dashed border-gray-300 pt-4 space-y-2">
+        <div className="flex justify-between text-lg font-bold">
+          <span>TOTAL A PAGAR</span>
+          <span>{sale.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+        </div>
+        
+        <div className="flex justify-between text-sm pt-2">
+          <span>Forma de Pagamento:</span>
+          <span className="font-medium uppercase">{sale.payment_method || sale.paymentMethod || 'Dinheiro'}</span>
+        </div>
+      </div>
+
+      {/* Rodapé */}
+      <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+        <p>Obrigado pela preferência!</p>
+        <p>Trocas somente com etiqueta e este cupom (prazo 7 dias).</p>
+        <p className="mt-4 font-mono opacity-50">Sistema: Nick's Boutique SaaS</p>
       </div>
     </div>
   );
