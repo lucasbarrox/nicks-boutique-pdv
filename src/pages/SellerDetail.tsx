@@ -1,77 +1,70 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { Seller, Address } from '@/types';
-import { SellerForm } from '@/components/sellers/SellerForm';
-import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { Seller, Sale } from '@/types';
+import { UserCheck, Loader2, ArrowLeft } from 'lucide-react';
 
 export function SellerDetail() {
-  const { sellerId } = useParams<{ sellerId: string }>();
+  const { sellerId } = useParams();
   const navigate = useNavigate();
   const [seller, setSeller] = useState<Seller | null>(null);
-  const isNew = sellerId === 'novo';
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (sellerId && !isNew) {
-      const foundSeller = db.sellers.getById(sellerId);
-      if (foundSeller) {
-        setSeller(foundSeller);
-      } else {
-        toast.error("Vendedor não encontrado.");
-        navigate('/vendedores');
-      }
+    async function load() {
+        const [allSellers, allSales] = await Promise.all([
+            db.sellers.getAll(),
+            db.sales.getAll()
+        ]);
+        const found = allSellers.find(s => s.id === sellerId);
+        if (!found) { navigate('/vendedores'); return; }
+        
+        setSeller(found);
+
+        // CORREÇÃO AQUI: Usamos 'seller_id' para filtrar
+        setSales(allSales.filter(s => s.seller_id === sellerId));
+        
+        setIsLoading(false);
     }
-  }, [sellerId, isNew, navigate]);
+    load();
+  }, [sellerId, navigate]);
 
-  const handleSave = (data: Omit<Seller, 'id' | 'address'> & { address?: Omit<Address, 'id'> }) => {
-    const addressData = data.address?.street 
-      ? { ...data.address, id: seller?.address?.id || `addr_seller_${Date.now()}` } 
-      : undefined;
+  if (isLoading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-pink-primary" /></div>;
+  if (!seller) return null;
 
-    const sellerPayload = {
-      name: data.name,
-      phone: data.phone,
-      emergencyPhone: data.emergencyPhone,
-      birthDate: data.birthDate,
-      address: addressData as Address | undefined,
-    }
-
-    if (isNew) {
-      db.sellers.create(sellerPayload);
-      toast.success("Vendedor criado com sucesso!");
-    } else if (sellerId) {
-      const existingSeller = db.sellers.getById(sellerId);
-      db.sellers.update({ 
-        ...existingSeller, 
-        ...sellerPayload, 
-        id: sellerId,
-      });
-      toast.success("Vendedor atualizado com sucesso!");
-    }
-    navigate('/vendedores');
-  };
-
-  if (!isNew && !seller) {
-    return <div>Carregando...</div>;
-  }
+  const totalSold = sales.reduce((acc, s) => acc + s.total, 0);
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate('/vendedores')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <ArrowLeft />
-        </button>
-        <div>
-            <h2 className="text-2xl font-bold">{isNew ? 'Novo Vendedor' : 'Editar Vendedor'}</h2>
-            {!isNew && <p className="text-gray-600">{seller?.name}</p>}
+    <div className="p-6 max-w-5xl mx-auto">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 mb-6 hover:text-pink-primary"><ArrowLeft size={20} /> Voltar</button>
+        
+        <div className="bg-white p-8 rounded-xl shadow-sm border mb-8 border-gray-100 flex items-center gap-6">
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                <UserCheck size={32} />
+            </div>
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800">{seller.name}</h1>
+                <p className="text-gray-500 mt-1">Total Vendido: <span className="font-bold text-green-600">{totalSold.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span></p>
+                {seller.pixKey && <p className="text-sm text-gray-400 mt-1">Chave Pix: {seller.pixKey}</p>}
+            </div>
         </div>
-      </div>
-      <SellerForm 
-        sellerToEdit={isNew ? undefined : seller} 
-        onSave={handleSave} 
-        onCancel={() => navigate('/vendedores')} 
-      />
+
+        <h3 className="font-bold text-lg mb-4 text-gray-700">Vendas Realizadas</h3>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            {sales.map(sale => (
+                <div key={sale.id} className="p-4 border-b border-gray-100 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                    <div>
+                        <span className="font-bold text-gray-800 block">{sale.displayId || sale.display_id}</span>
+                        <span className="text-xs text-gray-500">{new Date(sale.date).toLocaleDateString()}</span>
+                    </div>
+                    <span className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">
+                        {sale.total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+                    </span>
+                </div>
+            ))}
+             {sales.length === 0 && <div className="p-8 text-center text-gray-500">Nenhuma venda registrada para este vendedor.</div>}
+        </div>
     </div>
   );
 }
