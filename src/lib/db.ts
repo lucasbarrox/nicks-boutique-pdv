@@ -65,7 +65,6 @@ export const db = {
     update: async (updatedProduct: Product) => {
        const { variants, ...productInfo } = updatedProduct;
        
-       // 1. Atualiza dados do Produto Pai
        const dbPayload = {
         name: productInfo.name,
         description: productInfo.description,
@@ -81,12 +80,8 @@ export const db = {
 
        if (error) throw error;
 
-       // 2. Lógica Enterprise para Variações (Upsert & Prune)
        if (variants) {
-         // A. Upsert (Atualiza existentes, Cria novos)
-         // A. Upsert (Atualiza existentes, Cria novos)
          const variantsPayload = variants.map(v => {
-           // Preparamos o objeto base
            const payload: any = {
              sku: v.sku,
              size: v.size,
@@ -94,13 +89,7 @@ export const db = {
              stock: v.stock,
              product_id: updatedProduct.id
            };
-           
-           // Só adicionamos o ID se ele REALMENTE existir (não for nulo/vazio)
-           // Isso força o banco a criar um novo ID se este campo não for enviado
-           if (v.id) {
-             payload.id = v.id;
-           }
-           
+           if (v.id) payload.id = v.id;
            return payload;
          });
 
@@ -110,13 +99,10 @@ export const db = {
          
          if (upsertError) throw upsertError;
 
-         // B. Prune (Apagar apenas os que foram removidos do form)
-         // Filtramos apenas os IDs válidos que permaneceram no formulário
          const keptIds = variants
-            .filter(v => v.id) // Pega só quem tem ID
+            .filter(v => v.id)
             .map(v => v.id);
 
-         // Deleta do banco tudo o que é deste produto MAS não está na lista de mantidos
          if (keptIds.length > 0) {
             await supabase
                 .from('product_variants')
@@ -124,9 +110,6 @@ export const db = {
                 .eq('product_id', updatedProduct.id)
                 .not('id', 'in', `(${keptIds.join(',')})`);
          } else {
-             // Se o usuário removeu TODAS as variações no form (mas ainda existe o produto)
-             // Deletamos tudo que já tinha ID (ou seja, tudo que estava no banco)
-             // Nota: É raro um produto sem variações no seu modelo, mas é bom tratar
              await supabase
                 .from('product_variants')
                 .delete()
@@ -142,10 +125,15 @@ export const db = {
   },
 
   sales: {
-    // ... (Mantenha o resto igual, getAll, create, etc.)
     getAll: async () => {
-      const { data, error } = await supabase.from('sales').select('*').eq('store_id', STORE_ID).order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('store_id', STORE_ID)
+        .order('date', { ascending: false });
+      
       if (error) return [];
+      
       return data.map((s: any) => ({
         ...s,
         displayId: s.display_id,
@@ -154,14 +142,16 @@ export const db = {
         paymentMethod: s.payment_method
       })) as Sale[];
     },
+
     create: async (saleData: any) => {
         const displayId = `#${Date.now().toString().slice(-4)}`;
+
         const dbPayload = {
             display_id: displayId,
             store_id: STORE_ID,
-            customer_id: saleData.customer_id,
+            customer_id: saleData.customer_id || null,
             customer_name: saleData.customerName,
-            seller_id: saleData.seller_id,
+            seller_id: saleData.seller_id || null,
             seller_name: saleData.sellerName,
             total: saleData.total,
             payment_method: saleData.payment_method || saleData.paymentMethod,
@@ -169,20 +159,26 @@ export const db = {
             items: saleData.items,
             date: saleData.date
         };
-        const { data, error } = await supabase.from('sales').insert([dbPayload]).select().single();
-        if (error) throw error;
-        for (const item of saleData.items) {
-            const { data: variant } = await supabase.from('product_variants').select('id, stock').eq('sku', item.sku).maybeSingle();
-            if (variant) {
-              await supabase.from('product_variants').update({ stock: variant.stock - item.quantity }).eq('id', variant.id);
-            }
+
+        const { data, error } = await supabase
+            .rpc('create_sale_transaction', { p_sale_data: dbPayload });
+        
+        if (error) {
+            console.error("Erro na transação de venda:", error);
+            throw error;
         }
-        return data as Sale;
+
+        return {
+            ...saleData,
+            id: data.id,
+            displayId: displayId
+        } as Sale;
     },
+    
     update: async () => {},
     remove: async () => {},
   },
-  // ... (Mantenha customers, sellers, deliveryFees iguais ao anterior)
+
   customers: {
     getAll: async () => {
       const { data } = await supabase.from('customers').select('*').eq('store_id', STORE_ID);
