@@ -1,32 +1,15 @@
-import { useEffect, useState } from 'react';
-import { db } from '@/lib/db';
-import { Sale, Product } from '@/types';
 import { DollarSign, ShoppingBag, Package, TrendingUp, Loader2 } from 'lucide-react';
-import { getTopSellingProducts } from '@/lib/analytics'; 
+import { getTopSellingProducts } from '@/lib/analytics';
 import { Link } from 'react-router-dom';
+import { useSales } from '@/hooks/useSales';     // Hook de Vendas
+import { useProducts } from '@/hooks/useProducts'; // Hook de Produtos
 
 export function Dashboard() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Buscamos Vendas e Produtos em paralelo usando o cache
+  const { data: sales = [], isLoading: isLoadingSales } = useSales();
+  const { data: products = [], isLoading: isLoadingProducts } = useProducts();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [salesData, productsData] = await Promise.all([
-          db.sales.getAll(),
-          db.products.getAll()
-        ]);
-        setSales(salesData);
-        setProducts(productsData);
-      } catch (error) {
-        console.error("Erro ao carregar dashboard:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+  const isLoading = isLoadingSales || isLoadingProducts;
 
   if (isLoading) {
     return (
@@ -36,12 +19,15 @@ export function Dashboard() {
     );
   }
 
-  // Cálculos baseados nos dados carregados
+  // Cálculos de métricas
   const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
   const totalSales = sales.length;
+  
   const totalProducts = products.reduce((acc, p) => acc + p.variants.reduce((vAcc, v) => vAcc + v.stock, 0), 0);
+  
   const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
   
+  // Usa a função auxiliar de analytics
   const topSelling = getTopSellingProducts(sales, products, undefined, 5);
 
   const StatCard = ({ title, value, icon: Icon, color }: any) => (
@@ -115,7 +101,7 @@ export function Dashboard() {
             {sales.slice(0, 5).map(sale => (
               <Link key={sale.id} to={`/vendas/${sale.id}`} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-200">
                 <div>
-                  <p className="font-bold text-gray-800">{sale.displayId}</p>
+                  <p className="font-bold text-gray-800">{sale.displayId || sale.display_id}</p>
                   <p className="text-xs text-gray-500">{new Date(sale.date).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right">

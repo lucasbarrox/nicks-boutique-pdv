@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { db } from '@/lib/db';
+import { useState, useMemo } from 'react';
 import { Sale } from '@/types';
 import { Search, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSales } from '@/hooks/useSales';
 
 // Componente simples para formatar dinheiro
 const Money = ({ value }: { value: number }) => (
@@ -12,30 +12,15 @@ const Money = ({ value }: { value: number }) => (
 );
 
 export function Sales() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Carregar vendas da nuvem
-  useEffect(() => {
-    async function loadSales() {
-      try {
-        setIsLoading(true);
-        const data = await db.sales.getAll();
-        setSales(data);
-      } catch (error) {
-        console.error("Erro ao buscar vendas:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadSales();
-  }, []);
+  const { data: sales = [], isLoading } = useSales();
 
+  // Filtragem
   const filteredSales = useMemo(() => {
     return sales.filter(s => 
-      s.displayId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
+      (s.displayId || s.display_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [sales, searchTerm]);
 
@@ -87,7 +72,7 @@ export function Sales() {
             <tbody className="divide-y divide-gray-100">
               {filteredSales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="p-4 font-bold text-gray-700">{sale.displayId}</td>
+                  <td className="p-4 font-bold text-gray-700">{sale.displayId || sale.display_id}</td>
                   <td className="p-4 text-gray-600">
                     {new Date(sale.date).toLocaleDateString('pt-BR')} <span className="text-xs text-gray-400">{new Date(sale.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
                   </td>
