@@ -1,107 +1,95 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Users, MapPin, Phone, Loader2 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { Customer } from '@/types';
-import { Link, useNavigate } from 'react-router-dom';
+import { CustomerForm } from '@/components/customers/CustomerForm';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2, Edit, Search } from 'lucide-react';
-
-const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full p-3 border rounded-lg" />;
 
 export function Customers() {
-  const [customers, setCustomers] = useState(() => db.customers.getAll());
-  const navigate = useNavigate();
-  
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleDelete = (customer: Customer) => {
-    if (window.confirm(`Tem certeza que deseja excluir o cliente "${customer.name}"?`)) {
-      db.customers.remove(customer.id);
-      setCustomers(db.customers.getAll());
-      toast.success("Cliente excluído com sucesso!");
+  async function loadCustomers() {
+    setIsLoading(true);
+    try {
+      const data = await db.customers.getAll();
+      setCustomers(data);
+    } catch (e) {
+      toast.error('Erro ao carregar clientes');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const handleCreateCustomer = async (data: any) => {
+    try {
+      await db.customers.create(data);
+      toast.success('Cliente cadastrado!');
+      setIsModalOpen(false);
+      loadCustomers();
+    } catch (e) {
+      toast.error('Erro ao salvar cliente');
     }
   };
 
-  const filteredCustomers = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return customers;
-    }
-    const lowercasedTerm = searchTerm.toLowerCase();
-    return customers.filter(customer =>
-      customer.name.toLowerCase().includes(lowercasedTerm) ||
-      customer.phone.includes(lowercasedTerm) // Telefone não precisa de toLowerCase
-    );
-  }, [customers, searchTerm]);
+  const filtered = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  if (isLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-pink-primary" size={48} /></div>;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Clientes Cadastrados</h2>
-        <Link 
-          to="/clientes/novo" 
-          className="bg-pink-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-pink-primary/90 transition-colors"
-        >
-          Novo Cliente
-        </Link>
+        <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
+        <button onClick={() => setIsModalOpen(true)} className="bg-pink-primary text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <Plus size={20} /> Novo Cliente
+        </button>
       </div>
 
-      <div className="relative mb-6">
-        <Input 
-          placeholder="Buscar por nome ou telefone..." 
-          className="pl-12 bg-gray-50"
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex gap-2">
+        <Search className="text-gray-400" />
+        <input 
+          placeholder="Buscar cliente..." 
+          className="flex-1 outline-none"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="border-b bg-gray-50">
-            <tr>
-              <th className="p-4 font-semibold">Nome</th>
-              <th className="p-4 font-semibold">Telefone</th>
-              <th className="p-4 font-semibold">Email</th>
-              <th className="p-4 font-semibold text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCustomers.map(c => (
-              <tr key={c.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">
-                  <span 
-                    onClick={() => navigate(`/clientes/${c.id}`)} 
-                    className="font-bold hover:text-pink-primary transition-colors cursor-pointer"
-                  >
-                    {c.name}
-                  </span>
-                </td>
-                <td className="p-4 text-gray-600">{c.phone}</td>
-                <td className="p-4 text-gray-600">{c.email || '-'}</td>
-                <td className="p-4 text-right space-x-2">
-                   <button 
-                    onClick={() => navigate(`/clientes/${c.id}`)} 
-                    className="text-gray-400 hover:text-pink-primary p-2 rounded-full hover:bg-pink-50" 
-                    title="Editar Cliente"
-                  >
-                    <Edit size={18}/>
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(c)} 
-                    className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" 
-                    title="Excluir Cliente"
-                  >
-                    <Trash2 size={18}/>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredCustomers.length === 0 && (
-            <div className="text-center py-16 text-gray-500">
-                <p>{searchTerm ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado.'}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map(customer => (
+          <Link key={customer.id} to={`/clientes/${customer.id}`} className="bg-white p-6 rounded-xl shadow-sm border hover:border-pink-300 transition-colors block">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center text-pink-primary">
+                <Users size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800">{customer.name}</h3>
+                <p className="text-sm text-gray-500">{customer.email || 'Sem email'}</p>
+              </div>
             </div>
-        )}
+            <div className="space-y-2 text-sm text-gray-600">
+              <p className="flex items-center gap-2"><Phone size={16} /> {customer.phone || '-'}</p>
+              <p className="flex items-center gap-2"><MapPin size={16} /> {customer.addresses?.length || 0} endereços</p>
+            </div>
+          </Link>
+        ))}
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-xl w-full max-w-lg">
+                <h2 className="text-xl font-bold mb-4">Novo Cliente</h2>
+                <CustomerForm onSubmit={handleCreateCustomer} onCancel={() => setIsModalOpen(false)} />
+            </div>
+        </div>
+      )}
     </div>
   );
 }
