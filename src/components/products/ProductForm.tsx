@@ -1,6 +1,29 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Loader2 } from 'lucide-react';
-import { Product, ProductVariant } from '@/types';
+import { useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { X, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Product } from '@/types';
+
+// Definição do Schema de Validação
+const productSchema = z.object({
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  description: z.string().optional(),
+  // coerce.number converte string "10" para number 10 automaticamente
+  basePrice: z.coerce.number().min(0.01, 'Preço deve ser maior que zero'),
+  category: z.string().optional(),
+  imageUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+  variants: z.array(z.object({
+    id: z.string().optional(),
+    sku: z.string().optional(),
+    size: z.string().min(1, 'Tamanho obrigatório'),
+    color: z.string().min(1, 'Cor obrigatória'),
+    stock: z.coerce.number().min(0, 'Estoque não pode ser negativo')
+  })).min(1, 'Adicione pelo menos uma variação')
+});
+
+// Inferência do tipo TypeScript a partir do Schema Zod
+type ProductFormData = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
   initialData?: Product;
@@ -9,148 +32,207 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    basePrice: '',
-    category: '',
-    imageUrl: '',
-    variants: [] as Partial<ProductVariant>[]
+  // Setup do React Hook Form
+  const { 
+    register, 
+    control, 
+    handleSubmit, 
+    reset,
+    formState: { errors, isSubmitting } 
+  } = useForm({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      basePrice: 0,
+      category: '',
+      imageUrl: '',
+      variants: [{ size: '', color: '', stock: 0 }]
+    }
   });
 
+  // Gerenciador de Array
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "variants"
+  });
+
+  // Carrega dados na edição
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         name: initialData.name,
         description: initialData.description || '',
-        basePrice: initialData.basePrice.toString(),
+        basePrice: initialData.basePrice,
         category: initialData.category || '',
         imageUrl: initialData.imageUrl || '',
-        // CRUCIAL: Aqui mantemos o ID da variação vindo do banco
         variants: initialData.variants.map(v => ({
-            id: v.id, 
-            sku: v.sku,
-            size: v.size,
-            color: v.color,
-            stock: v.stock
+          id: v.id,
+          sku: v.sku,
+          size: v.size,
+          color: v.color,
+          stock: v.stock
         }))
       });
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        variants: [{ sku: '', size: '', color: '', stock: 0 }]
-      }));
     }
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        ...formData,
-        basePrice: parseFloat(formData.basePrice.replace(',', '.')) || 0,
-        variants: formData.variants.map(v => ({
-           ...v,
-           // Gera SKU se não tiver, mas mantém o ID se existir
-           sku: v.sku || `${formData.name.substring(0,3).toUpperCase()}-${v.size}-${v.color}`.replace(/\s+/g, '')
-        }))
-      };
-      await onSubmit(payload);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const addVariant = () => {
-    setFormData({
-      ...formData,
-      // Nova variação entra sem ID (será um INSERT)
-      variants: [...formData.variants, { sku: '', size: '', color: '', stock: 0 }]
-    });
-  };
-
-  const removeVariant = (index: number) => {
-    setFormData({
-      ...formData,
-      variants: formData.variants.filter((_, i) => i !== index)
-    });
-  };
-
-  const updateVariant = (index: number, field: keyof ProductVariant, value: any) => {
-    const newVariants = [...formData.variants];
-    newVariants[index] = { ...newVariants[index], [field]: value };
-    setFormData({ ...formData, variants: newVariants });
+  // Função de envio processada
+  const onFormSubmit = async (data: ProductFormData) => {
+    // Lógica de geração de SKUs simples
+    const processedData = {
+      ...data,
+      variants: data.variants.map(v => ({
+        ...v,
+        sku: v.sku || `${data.name.substring(0,3).toUpperCase()}-${v.size}-${v.color}`.replace(/\s+/g, '').toUpperCase()
+      }))
+    };
+    
+    await onSubmit(processedData);
   };
 
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-xl font-bold">{initialData ? 'Editar Produto' : 'Novo Produto'}</h2>
-        <button onClick={onCancel}><X className="text-gray-500" /></button>
+        <h2 className="text-xl font-bold text-gray-800">
+          {initialData ? 'Editar Produto' : 'Novo Produto'}
+        </h2>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+          <X size={24} />
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="flex-1 overflow-y-auto p-6 space-y-6">
+        
+        {/* Dados Principais */}
         <div className="space-y-4">
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Nome do Produto</label>
-                <input required className="w-full p-2 border rounded-md" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-            </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-gray-700">Nome do Produto</label>
+            <input 
+              {...register('name')}
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-100 outline-none" 
+              placeholder="Ex: Camiseta Básica"
+            />
+            {errors.name && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12}/> {errors.name.message}</span>}
+          </div>
             
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Preço Base (R$)</label>
-                    <input required type="number" step="0.01" className="w-full p-2 border rounded-md" value={formData.basePrice} onChange={e => setFormData({ ...formData, basePrice: e.target.value })} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Categoria</label>
-                    <input className="w-full p-2 border rounded-md" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-gray-700">Preço Base (R$)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                {...register('basePrice')}
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-100 outline-none" 
+              />
+              {errors.basePrice && <span className="text-xs text-red-500">{errors.basePrice.message}</span>}
             </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-gray-700">Categoria</label>
+              <input 
+                {...register('category')}
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-100 outline-none" 
+                placeholder="Ex: Verão"
+              />
+            </div>
+          </div>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700">URL da Imagem</label>
-                <input className="w-full p-2 border rounded-md" placeholder="https://..." value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
-            </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-gray-700">URL da Imagem</label>
+            <input 
+              {...register('imageUrl')}
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-100 outline-none" 
+              placeholder="https://..." 
+            />
+            {errors.imageUrl && <span className="text-xs text-red-500">{errors.imageUrl.message}</span>}
+          </div>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Descrição</label>
-                <textarea className="w-full p-2 border rounded-md" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-            </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-gray-700">Descrição</label>
+            <textarea 
+              {...register('description')}
+              rows={3} 
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-100 outline-none" 
+            />
+          </div>
         </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">Variações e Estoque</label>
-            <button type="button" onClick={addVariant} className="text-sm text-pink-primary flex items-center gap-1"><Plus size={16} /> Adicionar</button>
+        {/* Seção de Variações (Dinâmica) */}
+        <div className="border-t pt-4">
+          <div className="flex justify-between items-center mb-4">
+            <label className="text-sm font-bold text-gray-700">Variações e Estoque</label>
+            <button 
+              type="button" 
+              onClick={() => append({ size: '', color: '', stock: 0 })} 
+              className="text-sm text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1"
+            >
+              <Plus size={16} /> Adicionar Variação
+            </button>
           </div>
+          
           <div className="space-y-3">
-            {formData.variants.map((variant, index) => (
-              <div key={index} className="flex gap-2 items-end bg-gray-50 p-3 rounded-lg">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-100">
                 <div className="flex-1">
-                  <span className="text-xs text-gray-500">Tam</span>
-                  <input required className="w-full p-1 border rounded" value={variant.size} onChange={e => updateVariant(index, 'size', e.target.value)} />
+                  <span className="text-xs text-gray-500 mb-1 block">Tamanho</span>
+                  <input 
+                    {...register(`variants.${index}.size`)}
+                    placeholder="P, M, G"
+                    className="w-full p-1.5 border rounded text-sm" 
+                  />
+                  {errors.variants?.[index]?.size && <span className="text-[10px] text-red-500">{errors.variants[index]?.size?.message}</span>}
                 </div>
+                
                 <div className="flex-1">
-                  <span className="text-xs text-gray-500">Cor</span>
-                  <input required className="w-full p-1 border rounded" value={variant.color} onChange={e => updateVariant(index, 'color', e.target.value)} />
+                  <span className="text-xs text-gray-500 mb-1 block">Cor</span>
+                  <input 
+                    {...register(`variants.${index}.color`)}
+                    placeholder="Azul, Vermelho"
+                    className="w-full p-1.5 border rounded text-sm" 
+                  />
+                  {errors.variants?.[index]?.color && <span className="text-[10px] text-red-500">{errors.variants[index]?.color?.message}</span>}
                 </div>
+                
                 <div className="w-24">
-                  <span className="text-xs text-gray-500">Estoque</span>
-                  <input required type="number" className="w-full p-1 border rounded" value={variant.stock} onChange={e => updateVariant(index, 'stock', parseInt(e.target.value) || 0)} />
+                  <span className="text-xs text-gray-500 mb-1 block">Estoque</span>
+                  <input 
+                    type="number"
+                    {...register(`variants.${index}.stock`)}
+                    className="w-full p-1.5 border rounded text-sm" 
+                  />
+                  {errors.variants?.[index]?.stock && <span className="text-[10px] text-red-500">{errors.variants[index]?.stock?.message}</span>}
                 </div>
-                <button type="button" onClick={() => removeVariant(index)} className="p-2 text-red-500"><Trash2 size={16} /></button>
+                
+                <button 
+                  type="button" 
+                  onClick={() => remove(index)} 
+                  className="mt-6 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                  disabled={fields.length === 1} // Impede remover a última
+                  title="Remover"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             ))}
+            {errors.variants && <p className="text-xs text-red-500 text-center">{errors.variants.message}</p>}
           </div>
         </div>
       </form>
 
       <div className="p-4 border-t flex justify-end gap-3 bg-gray-50">
-        <button onClick={onCancel} className="px-4 py-2 text-gray-700 bg-white border rounded-lg">Cancelar</button>
-        <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 bg-pink-primary text-white rounded-lg flex items-center gap-2">
-          {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : 'Salvar Produto'}
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={handleSubmit(onFormSubmit)} 
+          disabled={isSubmitting} 
+          className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg flex items-center gap-2 font-bold disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : initialData ? 'Salvar Alterações' : 'Criar Produto'}
         </button>
       </div>
     </div>
