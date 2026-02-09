@@ -1,62 +1,52 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { db } from '../lib/db';
-import { Product } from '../types';
-import { ProductForm } from '../components/products/ProductForm';
-import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { db } from '@/lib/db';
+import { Product } from '@/types';
+import { Package, ArrowLeft, Loader2 } from 'lucide-react';
 
 export function ProductDetail() {
-  const { productId } = useParams<{ productId: string }>();
+  const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (productId) {
-      const foundProduct = db.products.getById(productId);
-      if (foundProduct) {
-        setProduct(foundProduct);
-      } else {
-        toast.error("Produto não encontrado.");
-        navigate('/estoque');
-      }
+    async function load() {
+        const all = await db.products.getAll();
+        const found = all.find(p => p.id === productId);
+        if (!found) { navigate('/estoque'); return; }
+        setProduct(found);
+        setIsLoading(false);
     }
-  }, [productId, navigate]);
+    load();
+  }, [productId]);
 
-  const handleUpdateProduct = (productData: Omit<Product, 'id'>, id?: string) => {
-    if (!id) return;
-    
-    const updatedProduct: Product = { ...productData, id };
-    db.products.update(updatedProduct);
-    toast.success(`Produto "${updatedProduct.name}" atualizado com sucesso!`);
-    navigate('/estoque');
-  };
-
-  if (!product) {
-    return (
-        <div className="flex justify-center items-center h-full">
-            <p className="text-gray-500">Carregando produto...</p>
-        </div>
-    );
-  }
+  if (isLoading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin" /></div>;
+  if (!product) return null;
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-sm max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-            <button onClick={() => navigate('/estoque')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <ArrowLeft />
-            </button>
-            <div>
-                <h2 className="text-2xl font-bold">Editar Produto</h2>
-                <p className="text-gray-600">{product.name}</p>
+    <div className="p-6 max-w-5xl mx-auto">
+       <button onClick={() => navigate(-1)} className="mb-4 flex gap-2 items-center text-gray-500"><ArrowLeft size={20}/> Voltar</button>
+       <div className="bg-white p-8 rounded-xl shadow-sm border">
+            <div className="flex gap-6">
+                <div className="bg-gray-100 p-8 rounded-lg"><Package size={64} className="text-gray-300"/></div>
+                <div>
+                    <h1 className="text-3xl font-bold">{product.name}</h1>
+                    <p className="text-2xl text-pink-primary font-bold mt-2">{Number(product.basePrice).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                    <p className="mt-4 text-gray-600">{product.description || 'Sem descrição.'}</p>
+                </div>
             </div>
-        </div>
-      
-      <ProductForm 
-        productToEdit={product}
-        onSave={handleUpdateProduct}
-        onCancel={() => navigate('/estoque')}
-      />
+            
+            <h3 className="mt-8 font-bold text-lg mb-4">Variações em Estoque</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {product.variants.map(v => (
+                    <div key={v.sku} className="p-4 border rounded-lg text-center">
+                        <p className="font-bold">{v.size} / {v.color}</p>
+                        <p className={`${v.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{v.stock} un.</p>
+                    </div>
+                ))}
+            </div>
+       </div>
     </div>
   );
 }
