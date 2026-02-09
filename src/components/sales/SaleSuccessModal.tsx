@@ -1,45 +1,73 @@
-import { Modal } from '../ui/Modal';
-import { CheckCircle, Printer, ArrowRight } from 'lucide-react';
+import { Check, Printer, ArrowRight } from 'lucide-react';
+import { Sale } from '@/types';
+import { Receipt } from './Receipt';
 
-interface Props {
+interface SaleSuccessModalProps {
   isOpen: boolean;
-  onNewSale: () => void;
-  onPrint: () => void;
+  onClose: () => void;
+  sale: Sale;
 }
 
+export function SaleSuccessModal({ isOpen, onClose, sale }: SaleSuccessModalProps) {
+  if (!isOpen) return null;
 
-export function SaleSuccessModal({ isOpen, onNewSale, onPrint }: Props) {
+  const handlePrint = () => {
+    // Cria uma janela invisível para impressão ou usa a função do navegador
+    window.print();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onNewSale} title="Status da Venda">
-      <div className="text-center py-8">
-        <CheckCircle 
-          className="mx-auto text-green-500 mb-4"
-          size={64}
-          strokeWidth={1.5}
-        />
-        <h2 className="text-3xl font-bold text-gray-800">Venda Concluída!</h2>
-        <p className="text-gray-500 mt-2">A venda foi registrada e o estoque foi atualizado.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
         
-        <button 
-          onClick={onPrint}
-          className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-lg font-semibold transition-colors bg-white border-2 border-pink-primary text-pink-primary hover:bg-pink-light/30"
-        >
-          <Printer size={20} />
-          Imprimir Comprovante
-        </button>
+        {/* Cabeçalho de Sucesso */}
+        <div className="bg-green-500 p-6 text-center text-white">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+            <Check size={32} className="text-white" strokeWidth={3} />
+          </div>
+          <h2 className="text-2xl font-bold">Venda Concluída!</h2>
+          <p className="text-green-100 mt-1">ID: {sale.displayId || sale.display_id}</p>
+        </div>
 
-        <button 
-          onClick={onNewSale}
-          className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-lg font-bold transition-colors bg-pink-primary text-white hover:bg-pink-primary/90"
-        >
-          Próxima Venda
-          <ArrowRight size={20} />
-        </button>
-        
+        {/* Conteúdo (Resumo rápido) */}
+        <div className="p-6">
+          <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-100">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-500">Valor Total</span>
+              <span className="text-xl font-bold text-gray-800">
+                {sale.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Pagamento</span>
+              <span className="font-medium">{sale.payment_method || sale.paymentMethod || 'Dinheiro'}</span>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <button 
+              onClick={handlePrint}
+              className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors"
+            >
+              <Printer size={20} />
+              Imprimir Recibo
+            </button>
+
+            <button 
+              onClick={onClose}
+              className="w-full flex items-center justify-center gap-2 bg-pink-primary hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              Nova Venda
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Recibo Oculto (Apenas para Impressão) */}
+        <div className="hidden print:block fixed inset-0 bg-white z-[100]">
+           <Receipt sale={sale} />
+        </div>
       </div>
-    </Modal>
-  )
+    </div>
+  );
 }
