@@ -1,115 +1,75 @@
 import { create } from 'zustand';
-import { CartItem, Product, ProductVariant, Customer, Seller, Address, Sale } from '@/types';
-import { toast } from 'sonner';
+import { persist } from 'zustand/middleware';
+import { Product, ProductVariant, Customer, Seller, Sale } from '@/types';
 
-type DeliveryInfo = {
-  fee: number;
-  address: Address;
-  notes?: string;
+interface CartItem {
+  product: Product;
+  variant: ProductVariant;
+  quantity: number;
 }
 
-interface CartState {
+interface CartStore {
   items: CartItem[];
   customer: Customer | null;
   seller: Seller | null;
-  deliveryInfo: DeliveryInfo | null;
   lastSale: Sale | null;
-  discount: number;
-  discountType: 'R$' | '%';
+  
   addItem: (product: Product, variant: ProductVariant) => void;
   removeItem: (sku: string) => void;
-  updateQuantity: (sku: string, newQuantity: number) => void;
+  updateQuantity: (sku: string, quantity: number) => void;
+  clearCart: () => void;
   setCustomer: (customer: Customer | null) => void;
   setSeller: (seller: Seller | null) => void;
-  setDeliveryInfo: (info: DeliveryInfo | null) => void;
   setLastSale: (sale: Sale | null) => void;
-  setDiscount: (value: number, type: 'R$' | '%') => void;
-  clearCart: () => void;
-  getSubtotal: () => number;
-  getTotal: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: [],
-  customer: null,
-  seller: null,
-  deliveryInfo: null,
-  lastSale: null,
-  discount: 0,
-  discountType: 'R$',
-  
-  addItem: (product, variant) => {
-    const { items } = get();
-    const existingItem = items.find(item => item.sku === variant.sku);
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      customer: null,
+      seller: null,
+      lastSale: null,
 
-    if (variant.stock <= 0) {
-      toast.error("Produto sem estoque.");
-      return;
+      addItem: (product, variant) => {
+        const currentItems = get().items;
+        const existingItemIndex = currentItems.findIndex(
+          (item) => item.variant.sku === variant.sku
+        );
+
+        if (existingItemIndex > -1) {
+          // Se já existe, aumenta a quantidade
+          const newItems = [...currentItems];
+          newItems[existingItemIndex].quantity += 1;
+          set({ items: newItems });
+        } else {
+          // Se não existe, adiciona novo
+          set({ items: [...currentItems, { product, variant, quantity: 1 }] });
+        }
+      },
+
+      removeItem: (sku) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.variant.sku !== sku),
+        }));
+      },
+
+      updateQuantity: (sku, quantity) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.variant.sku === sku ? { ...item, quantity } : item
+          ),
+        }));
+      },
+
+      clearCart: () => set({ items: [], customer: null, lastSale: null }), // Mantemos o vendedor para facilitar
+      
+      setCustomer: (customer) => set({ customer }),
+      setSeller: (seller) => set({ seller }),
+      setLastSale: (sale) => set({ lastSale: sale }),
+    }),
+    {
+      name: 'nicks-boutique-cart-storage', // Nome para salvar no navegador
     }
-    
-    if (existingItem) {
-      if (existingItem.quantity < variant.stock) {
-        set({ items: items.map(item => item.sku === variant.sku ? { ...item, quantity: item.quantity + 1 } : item) });
-        toast.success(`${product.name} adicionado ao carrinho.`);
-      } else {
-        toast.warning(`Estoque máximo atingido para ${product.name}.`);
-      }
-    } else {
-      set({ items: [ ...items, {
-            productId: product.id, productName: product.name, sku: variant.sku, variantInfo: `${variant.size} / ${variant.color}`,
-            quantity: 1, unitPrice: product.basePrice, stock: variant.stock,
-      }]});
-      toast.success(`${product.name} adicionado ao carrinho.`);
-    }
-  },
-  
-  removeItem: (sku) => {
-    set({ items: get().items.filter(item => item.sku !== sku) });
-    toast.info("Item removido do carrinho.");
-  },
-  
-  updateQuantity: (sku, newQuantity) => {
-    const itemToUpdate = get().items.find(item => item.sku === sku);
-    if (!itemToUpdate) return;
-    
-    if (newQuantity <= 0) {
-        get().removeItem(sku);
-    } else if (newQuantity <= itemToUpdate.stock) {
-        set({ items: get().items.map(item => item.sku === sku ? { ...item, quantity: newQuantity } : item) });
-    } else {
-        toast.warning(`Estoque máximo: ${itemToUpdate.stock} unidades.`);
-    }
-  },
-
-  setCustomer: (customer) => set({ customer }),
-  setSeller: (seller) => set({ seller }),
-  setDeliveryInfo: (info) => set({ deliveryInfo: info }),
-  setLastSale: (sale) => set({ lastSale: sale }),
-
-  setDiscount: (value, type) => set({ discount: value, discountType: type }),
-  
-  getSubtotal: () => get().items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0),
-  
-  getTotal: () => {
-    const subtotal = get().getSubtotal();
-    const fee = get().deliveryInfo?.fee || 0;
-
-    const { discount, discountType } = get();
-    let discountAmount = 0;
-    if (discountType === '%') {
-      discountAmount = (subtotal * discount) / 100;
-    } else {
-      discountAmount = discount;
-    }
-
-    const total = subtotal + fee - discountAmount;
-    return Math.max(0, total);
-
-  },
-
-  clearCart: () => {
-    const currentSeller = get().seller;
-    set({ items: [], customer: null, deliveryInfo: null, lastSale: null, seller: currentSeller, discount: 0, discountType: 'R$' });
-
-  },                                
-}));
+  )
+);
