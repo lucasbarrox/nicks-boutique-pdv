@@ -1,44 +1,30 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '@/lib/db';
-import { Customer, Sale } from '@/types';
 import { User, Phone, MapPin, Loader2, ArrowLeft } from 'lucide-react';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useSales } from '@/hooks/useSales';
 
 export function CustomerDetail() {
   const { customerId } = useParams();
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [history, setHistory] = useState<Sale[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      if (!customerId) return;
-      try {
-        const [allCustomers, allSales] = await Promise.all([
-           db.customers.getAll(),
-           db.sales.getAll()
-        ]);
-        
-        const found = allCustomers.find(c => c.id === customerId);
-        if (!found) {
-            navigate('/clientes'); 
-            return;
-        }
+  // Busca dados do cache
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
+  const { data: allSales = [], isLoading: isLoadingSales } = useSales();
 
-        setCustomer(found);
-        
-        // CORREÇÃO AQUI: Usamos 'customer_id' para filtrar
-        setHistory(allSales.filter(s => s.customer_id === customerId));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    load();
-  }, [customerId, navigate]);
+  const isLoading = isLoadingCustomers || isLoadingSales;
 
   if (isLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-pink-primary" /></div>;
-  if (!customer) return null;
+
+  const customer = customers.find(c => c.id === customerId);
+
+  if (!customer) {
+    // Se terminou de carregar e não achou, volta
+    if (!isLoading) navigate('/clientes');
+    return null;
+  }
+
+  // Filtra as vendas deste cliente
+  const history = allSales.filter(s => s.customer_id === customerId);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

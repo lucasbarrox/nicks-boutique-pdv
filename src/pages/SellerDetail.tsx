@@ -1,38 +1,29 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '@/lib/db';
-import { Seller, Sale } from '@/types';
 import { UserCheck, Loader2, ArrowLeft } from 'lucide-react';
+import { useSellers } from '@/hooks/useSellers';
+import { useSales } from '@/hooks/useSales';
 
 export function SellerDetail() {
   const { sellerId } = useParams();
   const navigate = useNavigate();
-  const [seller, setSeller] = useState<Seller | null>(null);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-        const [allSellers, allSales] = await Promise.all([
-            db.sellers.getAll(),
-            db.sales.getAll()
-        ]);
-        const found = allSellers.find(s => s.id === sellerId);
-        if (!found) { navigate('/vendedores'); return; }
-        
-        setSeller(found);
+  // Busca dados do cache
+  const { data: sellers = [], isLoading: isLoadingSellers } = useSellers();
+  const { data: allSales = [], isLoading: isLoadingSales } = useSales();
 
-        // CORREÇÃO AQUI: Usamos 'seller_id' para filtrar
-        setSales(allSales.filter(s => s.seller_id === sellerId));
-        
-        setIsLoading(false);
-    }
-    load();
-  }, [sellerId, navigate]);
+  const isLoading = isLoadingSellers || isLoadingSales;
 
   if (isLoading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-pink-primary" /></div>;
-  if (!seller) return null;
 
+  const seller = sellers.find(s => s.id === sellerId);
+
+  if (!seller) {
+      if (!isLoading) navigate('/vendedores');
+      return null;
+  }
+
+  // Filtra as vendas deste vendedor
+  const sales = allSales.filter(s => s.seller_id === sellerId);
   const totalSold = sales.reduce((acc, s) => acc + s.total, 0);
 
   return (

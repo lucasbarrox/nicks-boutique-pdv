@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { X, Search, User, Plus, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Search, User, Plus } from 'lucide-react';
 import { Customer } from '@/types';
-import { db } from '@/lib/db';
 import { CustomerForm } from './CustomerForm';
-import { toast } from 'sonner';
+import { Modal } from '@/components/ui/Modal';
+import { useCustomers, useCreateCustomer } from '@/hooks/useCustomers'; // Novo Hook
 
 interface SelectCustomerModalProps {
   isOpen: boolean;
@@ -12,136 +12,94 @@ interface SelectCustomerModalProps {
 }
 
 export function SelectCustomerModal({ isOpen, onClose, onSelect }: SelectCustomerModalProps) {
-  // 1. Estados para guardar os dados da nuvem
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  // 2. Buscar clientes assim que a janela abrir
-  useEffect(() => {
-    if (isOpen) {
-      loadCustomers();
-    }
-  }, [isOpen]);
+  const { data: customers = [], isLoading } = useCustomers();
+  const createMutation = useCreateCustomer();
 
-  async function loadCustomers() {
-    setIsLoading(true);
-    try {
-      const data = await db.customers.getAll();
-      setCustomers(data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro ao carregar clientes');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // 3. Criar cliente novo direto no modal (Bônus de UX)
-  const handleCreateCustomer = async (data: any) => {
-    try {
-      const newCustomer = await db.customers.create(data);
-      toast.success('Cliente cadastrado!');
-      // Já seleciona o cliente novo e fecha
-      onSelect(newCustomer);
-      onClose();
-    } catch (error) {
-      toast.error('Erro ao criar cliente');
-    }
-  };
-
-  // 4. Filtro seguro (só roda depois que customers tem dados)
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.phone && c.phone.includes(searchTerm)) ||
-    (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    (c.phone && c.phone.includes(searchTerm))
   );
+
+  const handleCreate = async (data: any) => {
+    try {
+      const newCustomer = await createMutation.mutateAsync(data);
+      onSelect(newCustomer);
+      setIsCreating(false);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md h-[600px] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* Cabeçalho */}
-        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-          <h2 className="font-bold text-lg text-gray-800">
-            {isCreating ? 'Novo Cliente' : 'Selecionar Cliente'}
-          </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
-          </button>
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-lg font-bold">{isCreating ? 'Novo Cliente' : 'Selecionar Cliente'}</h2>
+          <button onClick={onClose}><X className="text-gray-500" /></button>
         </div>
 
-        {/* Modo de Criação */}
         {isCreating ? (
-          <div className="p-4 overflow-y-auto flex-1">
+          <div className="p-4 overflow-y-auto">
             <CustomerForm 
-              onSubmit={handleCreateCustomer} 
-              onCancel={() => setIsCreating(false)} 
+              onSubmit={handleCreate}
+              onCancel={() => setIsCreating(false)}
             />
           </div>
         ) : (
-          /* Modo de Seleção */
           <>
-            <div className="p-4 space-y-4">
+            <div className="p-4 border-b bg-gray-50">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Buscar por nome, telefone ou email..."
+                  placeholder="Buscar por nome ou telefone..."
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-primary/20"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-primary/50"
+                  onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-
-              <button 
-                onClick={() => setIsCreating(true)}
-                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-pink-primary hover:text-pink-primary transition-colors flex items-center justify-center gap-2 font-medium"
-              >
-                <Plus size={20} />
-                Cadastrar Novo Cliente
-              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="w-full flex items-center gap-3 p-3 text-pink-primary hover:bg-pink-50 rounded-lg transition-colors font-medium"
+              >
+                <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                  <Plus size={20} />
+                </div>
+                Cadastrar Novo Cliente
+              </button>
+
               {isLoading ? (
-                <div className="flex justify-center p-8">
-                  <Loader2 className="animate-spin text-pink-primary" size={32} />
-                </div>
-              ) : (
-                <div className="space-y-1 pb-2">
-                  {filteredCustomers.map((customer) => (
-                    <button
-                      key={customer.id}
-                      onClick={() => {
-                        onSelect(customer);
-                        onClose();
-                      }}
-                      className="w-full p-3 flex items-center gap-4 hover:bg-pink-50 rounded-lg transition-colors group text-left"
-                    >
-                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 group-hover:bg-pink-100 group-hover:text-pink-600 transition-colors">
-                        <User size={20} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-800">{customer.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {customer.phone || customer.email || 'Sem contato'}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                  
-                  {filteredCustomers.length === 0 && !isLoading && (
-                    <div className="text-center py-8 text-gray-400">
-                      <p>Nenhum cliente encontrado.</p>
-                    </div>
-                  )}
-                </div>
+                <p className="p-4 text-center text-gray-500">Carregando...</p>
+              ) : filteredCustomers.map(customer => (
+                <button
+                  key={customer.id}
+                  onClick={() => { onSelect(customer); onClose(); }}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800">{customer.name}</p>
+                    {customer.phone && <p className="text-xs text-gray-500">{customer.phone}</p>}
+                  </div>
+                </button>
+              ))}
+              
+              {!isLoading && filteredCustomers.length === 0 && (
+                <p className="p-4 text-center text-gray-500 text-sm">Nenhum cliente encontrado.</p>
               )}
             </div>
           </>
