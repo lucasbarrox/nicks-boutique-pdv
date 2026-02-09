@@ -1,122 +1,95 @@
 import { Sale } from '@/types';
-import { db } from '@/lib/db';
+import { Package, User, Calendar, CreditCard, Tag } from 'lucide-react';
 
-const getVariantDetailsBySku = (sku: string) => {
-  const allProducts = db.products.getAll();
-  for (const product of allProducts) {
-    const variant = product.variants.find(v => v.sku === sku);
-    if (variant) {
-      return { product, variant };
-    }
-  }
-  return { product: null, variant: null };
+interface SaleDetailCardProps {
+  sale: Sale;
 }
 
-export function SaleDetailCard({ sale }: { sale: Sale }) {
-  const discountValue = sale.discountType === '%'
-    ? (sale.totalAmount * sale.discount) / 100
-    : sale.discount;
-
+export function SaleDetailCard({ sale }: SaleDetailCardProps) {
   return (
-    <div className="bg-white p-8 rounded-xl shadow-sm space-y-8 max-w-4xl mx-auto">
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-6 border-b">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Cabeçalho do Cartão */}
+      <div className="bg-gray-50 p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          <h3 className="text-gray-500 font-semibold">Cliente</h3>
-          <p className="font-bold text-lg">{sale.customerName || 'Cliente Avulso'}</p>
-        </div>
-        <div>
-          <h3 className="text-gray-500 font-semibold">Vendedor(a)</h3>
-          <p className="font-bold text-lg">{sale.sellerName || 'Não informado'}</p>
-        </div>
-        <div>
-          <h3 className="text-gray-500 font-semibold">Data da Venda</h3>
-          <p className="font-bold text-lg">{new Date(sale.timestamp).toLocaleString('pt-BR')}</p>
-        </div>
-      </div>
-      
-      <div>
-        <h3 className="font-bold text-xl mb-4">Itens Vendidos</h3>
-        <div className="border border-border-neutral rounded-lg">
-          <div className="hidden md:grid grid-cols-5 p-4 bg-gray-50 font-semibold">
-            <div className="col-span-2">Produto</div>
-            <div>Preço Unit.</div>
-            <div>Qtd.</div>
-            <div className="text-right">Total</div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-1 rounded-full">
+              {sale.status}
+            </span>
+            <span className="text-sm text-gray-400">#{sale.displayId || sale.display_id}</span>
           </div>
-          {sale.items.map((item, index) => {
-            const { product, variant } = getVariantDetailsBySku(item.sku);
-            return (
-              <div key={index} className="grid grid-cols-5 p-4 border-b last:border-b-0 items-center">
-                <div className="col-span-2">
-                  <p className="font-semibold">{product?.name || 'Produto não encontrado'}</p>
-                  <p className="text-sm text-gray-600">SKU: {item.sku} ({variant?.size} / {variant?.color})</p>
-                </div>
-                <div className="text-gray-700">{item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                <div className="text-gray-700">{item.quantity}</div>
-                <div className="text-right font-semibold">{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-              </div>
-            )
-          })}
+          <h2 className="text-2xl font-bold text-gray-800">
+            {sale.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </h2>
+        </div>
+        
+        <div className="flex flex-col gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-pink-primary" />
+            <span>{new Date(sale.date).toLocaleString('pt-BR')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User size={16} className="text-pink-primary" />
+            <span>{sale.customerName || 'Cliente Avulso'}</span>
+          </div>
+          {sale.sellerName && (
+            <div className="flex items-center gap-2">
+              <Tag size={16} className="text-pink-primary" />
+              <span>Vendedor: {sale.sellerName}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-            <h3 className="font-bold text-xl mb-4">Detalhes do Pagamento</h3>
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              {sale.payments && sale.payments.length > 0 ? (
-                <>
-                  {sale.payments.map((p, index) => (
-                      <div key={index} className="flex justify-between">
-                          <span className="text-gray-600">{p.method}:</span>
-                          <span className="font-semibold">{p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                      </div>
-                  ))}
-                  <div className="flex justify-between border-t pt-2 mt-2">
-                      <span className="text-gray-600">Total Pago:</span>
-                      <span className="font-semibold">{sale.amountPaid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                  </div>
-                  {sale.changeDue > 0 && (
-                      <div className="flex justify-between font-bold text-blue-500">
-                          <span>Troco:</span>
-                          <span>{sale.changeDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                      </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex justify-between">
-                    <span className="font-semibold text-gray-600">Forma de Pagamento:</span>
-                    <span className="font-bold">{(sale as any).paymentMethod}</span>
-                </div>
-              )}
-            </div>
+      {/* Lista de Itens */}
+      <div className="p-6">
+        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Package size={20} className="text-gray-400" />
+          Itens Comprados
+        </h3>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-gray-500 font-medium">
+              <tr>
+                <th className="p-3">Produto</th>
+                <th className="p-3">Tamanho/Cor</th>
+                <th className="p-3 text-center">Qtd</th>
+                <th className="p-3 text-right">Preço Unit.</th>
+                <th className="p-3 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {sale.items.map((item, index) => (
+                <tr key={`${item.sku}-${index}`}>
+                  <td className="p-3 font-medium text-gray-900">{item.productName}</td>
+                  <td className="p-3 text-gray-600">{item.size} / {item.color}</td>
+                  <td className="p-3 text-center">{item.quantity}</td>
+                  <td className="p-3 text-right">
+                    {item.priceAtSale.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </td>
+                  <td className="p-3 text-right font-medium text-gray-900">
+                    {(item.priceAtSale * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        <div className="space-y-2">
-            <h3 className="font-bold text-xl mb-4">Resumo Financeiro</h3>
-            <div className="flex justify-between text-lg">
-                <span>Subtotal</span>
-                <span>{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-
-            {discountValue > 0 && (
-              <div className="flex justify-between text-lg text-green-600">
-                  <span>Desconto</span>
-                  <span>- {discountValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between text-lg">
-                <span>Taxa de Entrega</span>
-                <span>{sale.deliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-            <div className="flex justify-between text-2xl font-bold pt-2 border-t text-pink-primary">
-                <span>TOTAL DA VENDA</span>
-                <span>{sale.finalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
+      {/* Rodapé com Pagamento */}
+      <div className="bg-gray-50 p-6 border-t border-gray-100">
+        <div className="flex items-center gap-2 mb-2 font-bold text-gray-700">
+          <CreditCard size={20} />
+          Detalhes do Pagamento
+        </div>
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-gray-600">Método:</span>
+          <span className="font-medium uppercase bg-white border px-3 py-1 rounded">
+            {sale.payment_method || sale.paymentMethod || 'Dinheiro'}
+          </span>
         </div>
       </div>
     </div>
-  )
+  );
 }
