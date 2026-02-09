@@ -1,110 +1,158 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Product, ProductVariant } from '@/types';
 
-import { Plus, Trash2 } from 'lucide-react';
-
 interface ProductFormProps {
-  onSave: (product: Omit<Product, 'id'>, id?: string) => void;
+  initialData?: Product;
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
-  productToEdit?: Product | null;
 }
 
-type VariantState = Omit<ProductVariant, 'sku'> & { sku?: string };
-
-export function ProductForm({ onSave, onCancel, productToEdit }: ProductFormProps) {
-  const [name, setName] = useState('');
-  const [basePrice, setBasePrice] = useState(0);
-  const [costPrice, setCostPrice] = useState(0);
-  const [variants, setVariants] = useState<VariantState[]>([{ color: '', size: '', stock: 0 }]);
+export function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    basePrice: '',
+    category: '',
+    imageUrl: '',
+    variants: [] as Partial<ProductVariant>[]
+  });
 
   useEffect(() => {
-    if (productToEdit) {
-      setName(productToEdit.name);
-      setBasePrice(productToEdit.basePrice);
-      setCostPrice(productToEdit.costPrice || 0);
-      setVariants(productToEdit.variants);
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        description: initialData.description || '',
+        basePrice: initialData.basePrice.toString(),
+        category: initialData.category || '',
+        imageUrl: initialData.imageUrl || '',
+        // CRUCIAL: Aqui mantemos o ID da variação vindo do banco
+        variants: initialData.variants.map(v => ({
+            id: v.id, 
+            sku: v.sku,
+            size: v.size,
+            color: v.color,
+            stock: v.stock
+        }))
+      });
     } else {
-      setName('');
-      setBasePrice(0);
-      setCostPrice(0);
-      setVariants([{ color: '', size: '', stock: 0 }]);
+      setFormData(prev => ({
+        ...prev,
+        variants: [{ sku: '', size: '', color: '', stock: 0 }]
+      }));
     }
-  }, [productToEdit]);
+  }, [initialData]);
 
-  const handleVariantChange = (index: number, field: keyof VariantState, value: string | number) => {
-    const newVariants = [...variants]; // Cria uma cópia do array para não modificar o estado diretamente.
-    (newVariants[index] as any)[field] = value;
-    setVariants(newVariants);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        basePrice: parseFloat(formData.basePrice.replace(',', '.')) || 0,
+        variants: formData.variants.map(v => ({
+           ...v,
+           // Gera SKU se não tiver, mas mantém o ID se existir
+           sku: v.sku || `${formData.name.substring(0,3).toUpperCase()}-${v.size}-${v.color}`.replace(/\s+/g, '')
+        }))
+      };
+      await onSubmit(payload);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const addVariant = () => {
-    setVariants([...variants, { color: '', size: '', stock: 0 }]);
+    setFormData({
+      ...formData,
+      // Nova variação entra sem ID (será um INSERT)
+      variants: [...formData.variants, { sku: '', size: '', color: '', stock: 0 }]
+    });
   };
 
   const removeVariant = (index: number) => {
-    if (variants.length > 1) {
-      setVariants(variants.filter((_, i) => i !== index));
-    }
+    setFormData({
+      ...formData,
+      variants: formData.variants.filter((_, i) => i !== index)
+    });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const productData = {
-      name,
-      description: '',
-      basePrice,
-      costPrice,
-      variants: variants.map(v => ({
-        ...v,
-        stock: Number(v.stock), 
-        sku: v.sku || `${name.substring(0, 2).toUpperCase()}-${v.color.substring(0, 2).toUpperCase()}-${v.size}-${Math.floor(Math.random() * 1000)}`
-      }))
-    };
-    onSave(productData, productToEdit?.id);
+  const updateVariant = (index: number, field: keyof ProductVariant, value: any) => {
+    const newVariants = [...formData.variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    setFormData({ ...formData, variants: newVariants });
   };
-
-  const isEditing = !!productToEdit;
-
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          <label className="block font-semibold mb-1">Nome do Produto</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" required />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Preço de Venda (R$)</label>
-          <input type="number" step="0.01" value={basePrice} onChange={(e) => setBasePrice(parseFloat(e.target.value))} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" required />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Preço de Custo (R$)</label>
-          <input type="number" step="0.01" value={costPrice} onChange={(e) => setCostPrice(parseFloat(e.target.value))} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" />
-        </div>
-      </div>
-      
-      <div className="border-t pt-4">
-        <h4 className="font-bold text-lg mb-2">Variações (Cor, Tamanho, Estoque)</h4>
-        {variants.map((variant, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 mb-2 p-2 border rounded-lg items-center">
-            <input type="text" placeholder="Cor" value={variant.color} onChange={(e) => handleVariantChange(index, 'color', e.target.value)} className="col-span-4 p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" required />
-            <input type="text" placeholder="Tamanho" value={variant.size} onChange={(e) => handleVariantChange(index, 'size', e.target.value)} className="col-span-4 p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" required />
-            <input type="number" placeholder="Estoque" value={variant.stock} onChange={(e) => handleVariantChange(index, 'stock', parseInt(e.target.value, 10))} className="col-span-3 p-2 border rounded-lg focus:ring-2 focus:ring-pink-primary outline-none" required />
-            {variants.length > 1 && <button type="button" onClick={() => removeVariant(index)} className="col-span-1 text-red-500 hover:bg-red-100 rounded-full p-2"><Trash2 size={18}/></button>}
-          </div>
-        ))}
-        <button type="button" onClick={addVariant} className="flex items-center gap-2 text-sm font-semibold text-pink-primary mt-2 hover:underline">
-          <Plus size={16}/> Adicionar Variação
-        </button>
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex justify-between items-center p-4 border-b">
+        <h2 className="text-xl font-bold">{initialData ? 'Editar Produto' : 'Novo Produto'}</h2>
+        <button onClick={onCancel}><X className="text-gray-500" /></button>
       </div>
 
-      <div className="flex justify-end gap-4 pt-4 border-t mt-6">
-        <button type="button" onClick={onCancel} className="px-6 py-2 bg-gray-200 rounded-lg font-semibold hover:bg-gray-300">Cancelar</button>
-        <button type="submit" className="px-6 py-2 bg-pink-primary text-white rounded-lg font-semibold hover:bg-pink-primary/90">
-          {isEditing ? 'Salvar Alterações' : 'Salvar Produto'}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Nome do Produto</label>
+                <input required className="w-full p-2 border rounded-md" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Preço Base (R$)</label>
+                    <input required type="number" step="0.01" className="w-full p-2 border rounded-md" value={formData.basePrice} onChange={e => setFormData({ ...formData, basePrice: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Categoria</label>
+                    <input className="w-full p-2 border rounded-md" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">URL da Imagem</label>
+                <input className="w-full p-2 border rounded-md" placeholder="https://..." value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                <textarea className="w-full p-2 border rounded-md" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+            </div>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700">Variações e Estoque</label>
+            <button type="button" onClick={addVariant} className="text-sm text-pink-primary flex items-center gap-1"><Plus size={16} /> Adicionar</button>
+          </div>
+          <div className="space-y-3">
+            {formData.variants.map((variant, index) => (
+              <div key={index} className="flex gap-2 items-end bg-gray-50 p-3 rounded-lg">
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500">Tam</span>
+                  <input required className="w-full p-1 border rounded" value={variant.size} onChange={e => updateVariant(index, 'size', e.target.value)} />
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500">Cor</span>
+                  <input required className="w-full p-1 border rounded" value={variant.color} onChange={e => updateVariant(index, 'color', e.target.value)} />
+                </div>
+                <div className="w-24">
+                  <span className="text-xs text-gray-500">Estoque</span>
+                  <input required type="number" className="w-full p-1 border rounded" value={variant.stock} onChange={e => updateVariant(index, 'stock', parseInt(e.target.value) || 0)} />
+                </div>
+                <button type="button" onClick={() => removeVariant(index)} className="p-2 text-red-500"><Trash2 size={16} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </form>
+
+      <div className="p-4 border-t flex justify-end gap-3 bg-gray-50">
+        <button onClick={onCancel} className="px-4 py-2 text-gray-700 bg-white border rounded-lg">Cancelar</button>
+        <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 bg-pink-primary text-white rounded-lg flex items-center gap-2">
+          {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : 'Salvar Produto'}
         </button>
       </div>
-    </form>
+    </div>
   );
 }
