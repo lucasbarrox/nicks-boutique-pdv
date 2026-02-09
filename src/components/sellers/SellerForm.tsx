@@ -1,87 +1,83 @@
 import { useState, useEffect } from 'react';
-import { Seller, Address } from '@/types';
+import { Loader2 } from 'lucide-react';
+import { Seller } from '@/types';
 
-interface Props {
-  sellerToEdit?: Seller | null;
-  onSave: (data: Omit<Seller, 'id' | 'address'> & { address?: Omit<Address, 'id'> }) => void;
+interface SellerFormProps {
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
+  initialData?: Seller;
 }
 
-const initialAddressState: Omit<Address, 'id'> = {
-  street: '',
-  number: '',
-  neighborhood: '',
-};
-
-export function SellerForm({ sellerToEdit, onSave, onCancel }: Props) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [address, setAddress] = useState<Omit<Address, 'id'>>(initialAddressState);
+export function SellerForm({ onSubmit, onCancel, initialData }: SellerFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    pixKey: '',
+  });
 
   useEffect(() => {
-    if (sellerToEdit) {
-      setName(sellerToEdit.name);
-      setPhone(sellerToEdit.phone || '');
-      setEmergencyPhone(sellerToEdit.emergencyPhone || '');
-      setBirthDate(sellerToEdit.birthDate || '');
-      setAddress(sellerToEdit.address || initialAddressState);
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        pixKey: initialData.pix_key || initialData.pixKey || '',
+      });
     }
-  }, [sellerToEdit]);
+  }, [initialData]);
 
-
-  const handleAddressChange = (field: keyof Omit<Address, 'id'>, value: string) => {
-    setAddress(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ name, phone, emergencyPhone, birthDate, address });
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        name: formData.name,
+        pix_key: formData.pixKey, // Enviar no formato do banco
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
-  const isEditing = !!sellerToEdit;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block font-semibold mb-1">Nome Completo</label>
-          <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded-lg" required />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Data de Nascimento</label>
-          <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full p-2 border rounded-lg" />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Telefone</label>
-          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 border rounded-lg" />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Telefone de Emergência</label>
-          <input type="text" value={emergencyPhone} onChange={e => setEmergencyPhone(e.target.value)} className="w-full p-2 border rounded-lg" />
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Nome do Vendedor</label>
+        <input
+          required
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-primary outline-none"
+          value={formData.name}
+          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Ex: Maria Vendedora"
+        />
       </div>
 
-      <div className="border-t pt-4">
-        <h4 className="font-bold text-lg mb-2">Endereço</h4>
-        <div className="space-y-2 p-4 border rounded-lg">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div className="md:col-span-2"><label className="text-sm">Rua</label><input type="text" value={address.street} onChange={e => handleAddressChange('street', e.target.value)} className="w-full p-2 border rounded-md" /></div>
-            <div><label className="text-sm">Nº</label><input type="text" value={address.number} onChange={e => handleAddressChange('number', e.target.value)} className="w-full p-2 border rounded-md" required /></div>
-            <div className="md:col-span-3"><label className="text-sm">Bairro</label><input type="text" value={address.neighborhood} onChange={e => handleAddressChange('neighborhood', e.target.value)} className="w-full p-2 border rounded-md" /></div>
-          </div>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Chave Pix (Opcional)</label>
+        <input
+          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-pink-primary outline-none"
+          value={formData.pixKey}
+          onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
+          placeholder="CPF, Email ou Telefone"
+        />
+        <p className="text-xs text-gray-500 mt-1">Usada para calcular comissões futuramente.</p>
       </div>
 
-      <div className="flex justify-end gap-4 pt-4 border-t mt-6">
-        <button type="button" onClick={onCancel} className="px-6 py-2 bg-gray-200 rounded-lg font-semibold hover:bg-gray-300">
+      <div className="flex justify-end gap-2 pt-4 border-t mt-6">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        >
           Cancelar
         </button>
-        <button type="submit" className="px-6 py-2 bg-pink-primary text-white rounded-lg font-semibold hover:bg-pink-primary/90">
-          {isEditing ? 'Salvar Alterações' : 'Criar Vendedor'}
+        <button
+          disabled={isSubmitting}
+          type="submit"
+          className="px-4 py-2 bg-pink-primary text-white rounded-lg hover:bg-pink-600 flex items-center gap-2 transition-colors"
+        >
+          {isSubmitting && <Loader2 className="animate-spin" size={16} />}
+          Salvar Vendedor
         </button>
       </div>
     </form>
-  )
+  );
 }
