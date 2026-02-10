@@ -19,7 +19,6 @@ export const db = {
         return [];
       }
       
-      // Mapper para converter DbProduct -> Product
       return (data as any[]).map(p => Mappers.product(p, p.variants));
     },
 
@@ -145,7 +144,6 @@ export const db = {
     create: async (saleData: any): Promise<Sale> => {
         const displayId = `#${Date.now().toString().slice(-4)}`;
 
-        // Mapeamento Input (App -> DB)
         const dbPayload = {
             display_id: displayId,
             store_id: STORE_ID,
@@ -219,8 +217,25 @@ export const db = {
         return (data as DbDeliveryFee[] || []).map(Mappers.deliveryFee);
       },
       setAll: () => {},
-      create: async () => null,
+      create: async (data: Omit<DeliveryFee, 'id'>): Promise<DeliveryFee> => {
+          const dbPayload = {
+              store_id: STORE_ID,
+              neighborhood: data.neighborhood,
+              fee: data.fee
+          };
+          const { data: newFee, error } = await supabase
+            .from('delivery_fees')
+            .insert([dbPayload])
+            .select()
+            .single();
+          
+          if (error) throw error;
+          return Mappers.deliveryFee(newFee as DbDeliveryFee);
+      },
       update: async () => {},
-      remove: async () => {}
+      remove: async (id: string): Promise<void> => {
+          const { error } = await supabase.from('delivery_fees').delete().eq('id', id);
+          if (error) throw error;
+      }
   }
 };
