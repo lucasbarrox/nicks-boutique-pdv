@@ -1,75 +1,120 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Product, ProductVariant, Customer, Seller, Sale } from '@/types';
+import { Product, Customer, Seller, CartItem } from '@/types';
 
-interface CartItem {
-  product: Product;
-  variant: ProductVariant;
-  quantity: number;
+interface Discount {
+  type: 'percentage' | 'fixed';
+  value: number;
 }
 
 interface CartStore {
   items: CartItem[];
   customer: Customer | null;
   seller: Seller | null;
-  lastSale: Sale | null;
+  deliveryFee: number;
+  deliveryFeeId?: string;
+  discount: Discount | null;
   
-  addItem: (product: Product, variant: ProductVariant) => void;
-  removeItem: (sku: string) => void;
-  updateQuantity: (sku: string, quantity: number) => void;
-  clearCart: () => void;
+  addItem: (product: Product) => void;
+  removeItem: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   setCustomer: (customer: Customer | null) => void;
   setSeller: (seller: Seller | null) => void;
-  setLastSale: (sale: Sale | null) => void;
+  setDeliveryFee: (fee: number, id?: string) => void;
+  setDiscount: (discount: Discount | null) => void;
+  clearCart: () => void;
+  
+  subtotal: () => number;
+  total: () => number;
 }
 
-export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      customer: null,
-      seller: null,
-      lastSale: null,
+export const useCartStore = create<CartStore>((set, get) => ({
+  items: [],
+  customer: null,
+  seller: null,
+  deliveryFee: 0,
+  deliveryFeeId: undefined,
+  discount: null,
 
-      addItem: (product, variant) => {
-        const currentItems = get().items;
-        const existingItemIndex = currentItems.findIndex(
-          (item) => item.variant.sku === variant.sku
-        );
+  addItem: (product) => {
+    const { items } = get();
+    // Procura por ID do produto
+    const existingItem = items.find((i) => i.id === product.id);
 
-        if (existingItemIndex > -1) {
-          // Se já existe, aumenta a quantidade
-          const newItems = [...currentItems];
-          newItems[existingItemIndex].quantity += 1;
-          set({ items: newItems });
-        } else {
-          // Se não existe, adiciona novo
-          set({ items: [...currentItems, { product, variant, quantity: 1 }] });
-        }
-      },
-
-      removeItem: (sku) => {
-        set((state) => ({
-          items: state.items.filter((item) => item.variant.sku !== sku),
-        }));
-      },
-
-      updateQuantity: (sku, quantity) => {
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.variant.sku === sku ? { ...item, quantity } : item
-          ),
-        }));
-      },
-
-      clearCart: () => set({ items: [], customer: null, lastSale: null }), // Mantemos o vendedor para facilitar
+    if (existingItem) {
+      set({
+        items: items.map((i) =>
+          i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+        ),
+      });
+    } else {
+      // Cria o item garantindo que temos a primeira variante como padrão
+      const defaultVariant = product.variants?.[0];
+      const newItem: CartItem = {
+        ...product,
+        quantity: 1,
+        sku: defaultVariant?.sku || 'DEFAULT',
+        selectedVariant: defaultVariant
+      };
       
-      setCustomer: (customer) => set({ customer }),
-      setSeller: (seller) => set({ seller }),
-      setLastSale: (sale) => set({ lastSale: sale }),
-    }),
-    {
-      name: 'nicks-boutique-cart-storage', // Nome para salvar no navegador
+      set({ items: [...items, newItem] });
     }
-  )
-);
+  },
+
+  removeItem: (productId) => {
+    set({ items: get().items.filter((i) => i.id !== productId) });
+  },
+
+  updateQuantity: (productId, quantity) => {
+    if (quantity <= 0) {
+      get().removeItem(productId);
+      return;
+    }
+    set({
+      items: get().items.map((i) =>
+        i.id === productId ? { ...i, quantity } : i
+      ),
+    });
+  },
+
+  setCustomer: (customer) => set({ customer }),
+  setSeller: (seller) => set({ seller }),
+  setDeliveryFee: (fee, id) => set({ deliveryFee: fee, deliveryFeeId: id }),
+  setDiscount: (discount) => set({ discount }),
+
+  clearCart: () => set({ 
+    items: [], 
+    customer: null, 
+    seller: null, 
+    deliveryFee: 0, 
+    deliveryFeeId: undefined,
+    discount: null 
+  }),
+
+  // CORREÇÃO DE SEGURANÇA: Filtra itens inválidos antes de somar
+  subtotal: () => {
+    const { items } = get();
+    if (!items || !Array.isArray(items)) return 0;
+    
+    return items.reduce((acc, item) => {
+      // Se o item for inválido ou não tiver preço, ignora
+      if (!item || typeof item.basePrice !== 'number') return acc;
+      return acc + (item.basePrice * item.quantity);
+    }, 0);
+  },
+
+  total: () => {
+    const subtotal = get().subtotal();
+    const { deliveryFee, discount } = get();
+    
+    let discountAmount = 0;
+    if (discount) {
+      if (discount.type === 'fixed') {
+        discountAmount = discount.value;
+      } else {
+        discountAmount = subtotal * (discount.value / 100);
+      }
+    }
+
+    return Math.max(0, subtotal + deliveryFee - discountAmount);
+  },
+}));
