@@ -1,3 +1,5 @@
+// Definições de Tipos Globais
+
 export interface ProductVariant {
   id?: string;
   sku: string;
@@ -12,19 +14,46 @@ export interface Product {
   store_id?: string;
   name: string;
   description?: string;
-  category?: string; // Adicionado
+  category?: string;
   basePrice: number;
-  base_price?: number; 
   imageUrl?: string;
-  image_url?: string;
   variants: ProductVariant[];
   active?: boolean;
 }
 
-export interface CartItem {
-  product: Product;
-  variant: ProductVariant;
+// CORREÇÃO: CartItem agora estende Product para ter acesso direto a 'name', 'imageUrl', etc.
+// E garantimos que ele tem a propriedade 'sku' da variante selecionada.
+export interface CartItem extends Product {
   quantity: number;
+  sku: string; // SKU da variante específica selecionada
+  selectedVariant?: ProductVariant; // Opcional, para facilitar acesso aos dados da variação
+}
+
+export interface SaleItem {
+  sku: string;
+  quantity: number;
+  price: number;
+  name: string; // Snapshot do nome
+}
+
+export interface Sale {
+  id: string;
+  displayId?: string;
+  display_id?: string;
+  store_id: string;
+  customer_id?: string;
+  customerName?: string;
+  customer_name?: string;
+  seller_id?: string;
+  sellerName?: string;
+  seller_name?: string;
+  total: number;
+  paymentMethod: string;
+  payment_method?: string;
+  status: 'Concluída' | 'Pendente' | 'Cancelada';
+  items: SaleItem[];
+  date: string;
+  created_at?: string;
 }
 
 export interface Customer {
@@ -40,8 +69,6 @@ export interface Customer {
 export interface Address {
   street: string;
   number?: string;
-  complement?: string;
-  neighborhood?: string;
   city: string;
   state?: string;
   zip?: string;
@@ -51,39 +78,13 @@ export interface Seller {
   id: string;
   store_id?: string;
   name: string;
-  pixKey?: string; // Adicionado
+  pixKey?: string;
   pix_key?: string;
-}
-
-export interface SaleItem {
-  sku: string;
-  productName: string;
-  size: string;
-  color: string;
-  quantity: number;
-  priceAtSale: number;
-}
-
-export interface Sale {
-  id: string;
-  store_id?: string;
-  displayId?: string; 
-  display_id?: string; 
-  customer_id?: string;
-  seller_id?: string;
-  customerName?: string; 
-  sellerName?: string;
-  total: number;
-  status: 'Concluída' | 'Pendente' | 'Cancelada';
-  paymentMethod?: string;
-  payment_method?: string; 
-  items: SaleItem[];
-  date: string;
-  created_at?: string;
 }
 
 export interface DeliveryFee {
   id: string;
+  store_id?: string;
   neighborhood: string;
   fee: number;
 }
